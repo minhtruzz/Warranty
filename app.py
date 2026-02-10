@@ -1,4 +1,3 @@
-from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, session
 import mysql.connector
 import uuid
 import os
@@ -7,6 +6,9 @@ import random
 import threading
 import pandas as pd
 import math
+import io
+from flask import send_file
+from flask import jsonify
 from datetime import datetime, timedelta
 from dateutil.relativedelta import relativedelta
 from qr_generator import generate_qr
@@ -14,6 +16,7 @@ from functools import wraps
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
 from flask import request, redirect, url_for, session
+from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, session
 
 app = Flask(__name__)
 app.secret_key = 'mintruzz.dev_pro_code'
@@ -559,7 +562,7 @@ def warranty(uuid_code):
     conn = db()
     cur = conn.cursor(dictionary=True)
     cur.execute("""
-        SELECT wi.*, o.customer_name, p.product_name, p.info_warranty
+        SELECT wi.*, o.customer_name,o.customer_phone, p.product_name, p.info_warranty
         FROM warranty_items wi
         JOIN orders o ON wi.bill_id=o.id
         JOIN products p ON wi.product_id=p.id
@@ -707,6 +710,78 @@ def import_excel():
     except Exception as e:
         print(f"Lỗi: {e}")
         return jsonify({"success": False, "message": f"Lỗi: {str(e)}"})
+    
+# export file
+# --- XUẤT FILE EXCEL ĐẦY ĐỦ (ORDERS + ITEMS) ---
+@app.route('/export_excel')
+@login_required
+def export_excel():
+    try:
+        conn = db()
+        # Dùng pandas để đọc SQL trực tiếp cho nhanh và chuẩn
+        # Câu lệnh JOIN 3 bảng: orders (khách), warranty_items (chi tiết), products (tên sp)
+        sql = """
+            SELECT 
+                o.bill_code AS 'Mã Đơn',
+                o.customer_name AS 'Tên Khách Hàng',
+                o.customer_phone AS 'SĐT',
+                o.customer_address AS 'Địa Chỉ',
+                o.created_at AS 'Ngày Tạo Đơn',
+                p.product_name AS 'Sản Phẩm',
+                wi.so_phieu AS 'Số Phiếu/Note',
+                wi.warranty_months AS 'Bảo Hành (Tháng)',
+                wi.activated_at AS 'Ngày Kích Hoạt',
+                wi.uuid AS 'Mã UUID'
+            FROM warranty_items wi
+            JOIN orders o ON wi.bill_id = o.id
+            JOIN products p ON wi.product_id = p.id
+            ORDER BY o.created_at DESC
+        """
+        
+        # Đọc dữ liệu vào DataFrame
+        df = pd.read_sql(sql, conn)
+        conn.close()
+
+        if df.empty:
+            flash('Không có dữ liệu để xuất!', 'warning')
+            return redirect(request.referrer)
+
+        # --- Xử lý file Excel trong bộ nhớ (không cần lưu ra ổ cứng) ---
+        output = io.BytesIO()
+        
+        # Dùng engine 'xlsxwriter' để format cho đẹp (nếu cài rồi)
+        # Hoặc dùng 'openpyxl' mặc định
+        with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
+            df.to_excel(writer, index=False, sheet_name='Chi Tiết Đơn Hàng')
+            
+            # (Tuỳ chọn) Auto-adjust độ rộng cột cho dễ nhìn
+            workbook = writer.book
+            worksheet = writer.sheets['Chi Tiết Đơn Hàng']
+            format_header = workbook.add_format({'bold': True, 'align': 'center', 'bg_color': '#D7E4BC'})
+            
+            for i, col in enumerate(df.columns):
+                # Set độ rộng cột = độ dài tiêu đề + 5
+                worksheet.set_column(i, i, len(col) + 5)
+                # Format header
+                worksheet.write(0, i, col, format_header)
+
+        output.seek(0)
+        
+        # Tạo tên file có ngày giờ hiện tại
+        filename = f"Chi_Tiet_Don_Hang_{datetime.now().strftime('%Y%m%d_%H%M')}.xlsx"
+
+        return send_file(
+            output, 
+            download_name=filename, 
+            as_attachment=True,
+            mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        )
+
+    except Exception as e:
+        print(f"Lỗi xuất Excel: {e}")
+        flash(f'Lỗi khi xuất file: {str(e)}', 'error')
+        return redirect(request.referrer)
+
 # ------------------------------------------
 # 👤 QUẢN LÝ TÀI KHOẢN (CUSTOMERS/USERS)
 # ------------------------------------------
@@ -949,45 +1024,162 @@ def manage_orders():
 
 # 2. Sửa thông tin đơn hàng (Chỉ xử lý POST từ Modal)
 # --- Code xử lý SỬA ĐƠN HÀNG (Khớp với Modal HTML) ---
+# --- CẬP NHẬT ROUTE SỬA ĐƠN HÀNG ---
+from datetime import datetime
+
+# --- 1. SỬA HÀM UPDATE ĐƠN HÀNG (Thêm xử lý ngày tháng an toàn) ---
 @app.route('/edit_order/<int:bill_id>', methods=['POST'])
+@login_required
 def edit_order(bill_id):
-    # 1. Lấy dữ liệu từ cái Modal gửi lên
-    # (name="customer_name", name="customer_phone", name="customer_address")
+    # Lấy dữ liệu
     customer_name = request.form.get('customer_name')
     customer_phone = request.form.get('customer_phone')
     customer_address = request.form.get('customer_address') 
+    created_at_raw = request.form.get('created_at') # Dạng: "2024-02-10T14:30"
+
+    # Xử lý format ngày tháng (bỏ chữ T nếu có để MySQL hiểu)
+    created_at = created_at_raw.replace('T', ' ') if created_at_raw else None
 
     conn = db()
     cur = conn.cursor()
 
     try:
-        # 2. Câu lệnh SQL update bảng bills
-        # Lưu ý: Bảng của bạn tên là 'bills' (theo ảnh Adminer cũ)
         sql = """
             UPDATE orders 
             SET customer_name = %s, 
                 customer_phone = %s, 
-                customer_address = %s 
+                customer_address = %s,
+                created_at = %s
             WHERE id = %s
         """
-        val = (customer_name, customer_phone, customer_address, bill_id)
+        val = (customer_name, customer_phone, customer_address, created_at, bill_id)
         
         cur.execute(sql, val)
         conn.commit()
-        
         flash('Cập nhật đơn hàng thành công!', 'success')
 
     except Exception as e:
         conn.rollback()
+        print(f"Lỗi SQL edit_order: {e}") 
         flash(f'Lỗi cập nhật: {str(e)}', 'error')
-        print(f"Lỗi SQL: {e}") # In ra terminal để dễ debug nếu lỗi
 
     finally:
         cur.close()
         conn.close()
 
-    # 3. Quay lại trang danh sách đơn hàng (admin dashboard)
     return redirect(request.referrer or url_for('admin'))
+
+
+# --- 2. QUAN TRỌNG: API LẤY LIST SẢN PHẨM (ĐÃ FIX LOGIC) ---
+# --- 1. API Lấy danh sách sản phẩm theo Mã Đơn (TT-xxxx) ---
+@app.route('/api/get-items/<string:bill_code>', methods=['GET'])
+@login_required
+def get_items_api(bill_code):
+    try:
+        conn = db()
+        cur = conn.cursor(dictionary=True)
+        
+        # Tìm items dựa vào Mã Đơn Hàng (bill_code) trong bảng orders
+        sql = """
+            SELECT 
+                wi.id, 
+                wi.uuid,
+                p.product_name, 
+                wi.so_phieu,
+                wi.product_id,
+                wi.warranty_months,
+                wi.activated_at
+            FROM warranty_items wi
+            JOIN products p ON wi.product_id = p.id
+            JOIN orders o ON wi.bill_id = o.id 
+            WHERE o.bill_code = %s
+            ORDER BY wi.id DESC
+        """
+        cur.execute(sql, (bill_code,))
+        items = cur.fetchall()
+        cur.close()
+        conn.close()
+        
+        return jsonify({'success': True, 'items': items})
+    except Exception as e:
+        print(f"Lỗi API get-items: {e}")
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+# --- 2. API Lấy toàn bộ danh sách sản phẩm (Để nạp vào Dropdown chọn) ---
+@app.route('/api/all-products', methods=['GET'])
+@login_required
+def get_all_products_api():
+    try:
+        conn = db()
+        cur = conn.cursor(dictionary=True)
+        cur.execute("SELECT id, product_name FROM products ORDER BY product_name ASC")
+        products = cur.fetchall()
+        cur.close()
+        conn.close()
+        return jsonify({'success': True, 'products': products})
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+# --- 3. API Sửa sản phẩm (Cập nhật ID sản phẩm và Số phiếu) ---
+@app.route('/api/update-item', methods=['POST'])
+@login_required
+def update_item_api():
+    try:
+        data = request.json
+        item_id = data.get('id')
+        new_product_id = data.get('product_id') 
+        new_note = data.get('so_phieu')
+        
+        conn = db()
+        cur = conn.cursor()
+        
+        # --- [BẮT ĐẦU SỬA] KIỂM TRA TRÙNG SỐ PHIẾU ---
+        # Chỉ kiểm tra nếu số phiếu không bị bỏ trống
+        if new_note and str(new_note).strip():
+            # Logic: Tìm xem có thằng nào KHÁC (id != item_id) mà đang giữ số phiếu này không
+            check_sql = "SELECT id FROM warranty_items WHERE so_phieu = %s AND id != %s"
+            cur.execute(check_sql, (new_note, item_id))
+            duplicate = cur.fetchone()
+            
+            if duplicate:
+                cur.close()
+                conn.close()
+                # Trả về lỗi để SweetAlert hiện lên
+                return jsonify({'success': False, 'message': f'Số phiếu "{new_note}" đã tồn tại ở đơn hàng khác!'})
+        # --- [KẾT THÚC SỬA] ---
+
+        # Cập nhật product_id và so_phieu
+        sql = "UPDATE warranty_items SET product_id = %s, so_phieu = %s WHERE id = %s"
+        cur.execute(sql, (new_product_id, new_note, item_id))
+        
+        conn.commit()
+        cur.close()
+        conn.close()
+        
+        return jsonify({'success': True})
+        
+    except Exception as e:
+        print(f"Lỗi update: {e}")
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+# --- 4. API Xóa sản phẩm ---
+@app.route('/api/delete-item', methods=['POST'])
+@login_required
+def delete_item_api():
+    try:
+        data = request.json
+        item_id = data.get('id')
+        
+        conn = db()
+        cur = conn.cursor()
+        cur.execute("DELETE FROM warranty_items WHERE id = %s", (item_id,))
+        conn.commit()
+        cur.close()
+        conn.close()
+        
+        return jsonify({'success': True})
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)}), 500
 
 #=============bảo hành===============
 @app.route("/manage-warranties")
@@ -1074,4 +1266,4 @@ def manage_warranties():
 
 
 if __name__ == "__main__":
-    app.run(host="192.168.22.11", debug=True, port=5000)
+    app.run(host="0.0.0.0", debug=True, port=5000)

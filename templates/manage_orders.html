@@ -6,7 +6,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Quản lý Đơn hàng</title>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link rel="icon" type="image/png" href="{{ url_for('static', filename='favicon.png') }}">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
     <style>
+        /* --- GIỮ NGUYÊN CSS CŨ CỦA BẠN (KHÔNG ĐỔI) --- */
         :root {
             --primary: #4361ee;
             --secondary: #3f37c9;
@@ -33,7 +37,6 @@
             max-width: 1000px;
             margin: 0 auto;
             flex: 1;
-            /* Để footer luôn ở dưới cùng */
             width: 100%;
         }
 
@@ -86,7 +89,6 @@
             color: var(--dark);
         }
 
-        /* Table Styles */
         .table-wrapper {
             overflow-x: auto;
         }
@@ -128,30 +130,31 @@
             font-size: 0.9rem;
         }
 
-        /* Buttons Action */
-        .btn-edit {
-            color: var(--warning);
-            background: #fff8e1;
-            border: 1px solid #ffe082;
+        /* Button Styles */
+        .btn-action {
+            border: none;
             cursor: pointer;
-            margin-right: 8px;
             font-weight: 600;
             font-size: 0.85rem;
             padding: 6px 12px;
             border-radius: 6px;
             transition: all 0.2s;
+            margin-right: 5px;
         }
 
-        .btn-delete {
+        .btn-detail {
+            background: #3498db;
             color: white;
-            background: var(--danger);
-            border: 1px solid var(--danger);
-            cursor: pointer;
-            font-weight: 600;
-            padding: 6px 12px;
-            font-size: 0.85rem;
-            border-radius: 6px;
-            transition: all 0.2s;
+        }
+
+        .btn-detail:hover {
+            background: #2980b9;
+        }
+
+        .btn-edit {
+            background: #fff8e1;
+            color: #f39c12;
+            border: 1px solid #ffe082;
         }
 
         .btn-edit:hover {
@@ -159,12 +162,15 @@
             color: #856404;
         }
 
-        .btn-delete:hover {
-            background: #c0392b;
-            border-color: #c0392b;
+        .btn-delete {
+            background: var(--danger);
+            color: white;
         }
 
-        /* --- Pagination CSS (Phân trang) --- */
+        .btn-delete:hover {
+            background: #c0392b;
+        }
+
         .pagination-wrapper {
             display: flex;
             justify-content: center;
@@ -207,7 +213,7 @@
             background: #f8f9fa;
         }
 
-        /* --- CSS MODAL --- */
+        /* CSS Modal */
         .modal-overlay {
             position: fixed;
             top: 0;
@@ -237,6 +243,13 @@
             box-shadow: 0 25px 50px rgba(0, 0, 0, 0.25);
             transform: scale(0.9);
             transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            display: flex;
+            flex-direction: column;
+            max-height: 90vh;
+        }
+
+        .modal-lg {
+            max-width: 700px;
         }
 
         .modal-overlay.active .modal-box {
@@ -273,6 +286,7 @@
 
         .modal-body {
             padding: 25px;
+            overflow-y: auto;
         }
 
         .form-group {
@@ -361,6 +375,61 @@
             font-size: 0.85rem;
             padding-bottom: 10px;
         }
+
+        .detail-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+
+        .detail-table th {
+            background: #eef2ff;
+            font-size: 0.8rem;
+            padding: 12px;
+            color: var(--secondary);
+            border-bottom: 2px solid #dbeafe;
+        }
+
+        .detail-table td {
+            font-size: 0.95rem;
+            padding: 12px;
+            border-bottom: 1px solid #eee;
+            color: #334155;
+        }
+
+        .detail-table tr:last-child td {
+            border-bottom: none;
+        }
+
+        .btn-icon {
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 1.1rem;
+            padding: 8px;
+            transition: transform 0.2s;
+        }
+
+        .btn-icon:hover {
+            transform: scale(1.2);
+        }
+
+        .text-edit {
+            color: var(--warning);
+        }
+
+        .text-del {
+            color: var(--danger);
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 40px;
+            color: #94a3b8;
+            background: #f8fafc;
+            border-radius: 8px;
+            border: 1px dashed #cbd5e1;
+        }
     </style>
 </head>
 
@@ -371,17 +440,22 @@
         </div>
 
         <div class="card">
-            <div class="card-header">
+            <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
                 <h2><i class="fas fa-file-invoice" style="color: var(--primary);"></i> Quản lý Đơn hàng</h2>
+
+                <a href="{{ url_for('export_excel') }}" class="btn-back"
+                    style="background-color: #2ecc71; color: white; border: none;">
+                    <i class="fas fa-file-excel"></i> Export
+                </a>
             </div>
 
             <div class="table-wrapper">
                 <table>
                     <thead>
                         <tr>
-                            <th>Mã KH</th>
-                            <th>Tên Khách hàng</th>
-                            <th>Số điện thoại</th>
+                            <th>Mã đơn</th>
+                            <th>Khách hàng</th>
+                            <th>SĐT</th>
                             <th>Địa chỉ</th>
                             <th>Ngày tạo</th>
                             <th style="text-align: right;">Thao tác</th>
@@ -390,8 +464,7 @@
                     <tbody>
                         {% for b in bills %}
                         <tr>
-                            <td style="width: 100px;"><span class="bill-code">{{ b.bill_code
-                                    }}</span></td>
+                            <td style="width: 100px;"><span class="bill-code">{{ b.bill_code }}</span></td>
                             <td>
                                 <div style="font-weight: 600; color: #334155;">{{ b.customer_name }}</div>
                             </td>
@@ -402,18 +475,24 @@
                             </td>
                             <td style="color: #64748b; font-size: 0.85rem;">{{ b.created_at }}</td>
                             <td style="text-align: right; white-space: nowrap;">
-                                <button type="button" class="btn-edit" data-id="{{ b.id }}"
+                                <button type="button" class="btn-action btn-detail"
+                                    onclick="openDetailModal('{{ b.bill_code }}', '{{ b.customer_name }}')">
+                                    <i class="fas fa-list-ul"></i> CT
+                                </button>
+
+                                <button type="button" class="btn-action btn-edit" data-id="{{ b.id }}"
                                     data-code="{{ b.bill_code }}" data-name="{{ b.customer_name }}"
                                     data-phone="{{ b.customer_phone or '' }}"
-                                    data-address="{{ b.customer_address or '' }}" onclick="openEditModal(this)">
-                                    <i class="fas fa-pen"></i> Sửa
+                                    data-address="{{ b.customer_address or '' }}" data-created="{{ b.created_at }}"
+                                    onclick="openEditModal(this)">
+                                    <i class="fas fa-pen"></i>
                                 </button>
 
                                 <form action="{{ url_for('delete_bill', bill_id=b.id) }}" method="POST"
                                     style="display:inline;">
-                                    <button type="submit" class="btn-delete"
-                                        onclick="return confirm('⚠️ CẢNH BÁO: \nBạn chắc chắn muốn XÓA đơn hàng {{ b.bill_code }}? \nDữ liệu bảo hành liên quan cũng sẽ bị xóa vĩnh viễn!');">
-                                        <i class="fas fa-trash-alt"></i> Xóa
+                                    <button type="submit" class="btn-action btn-delete"
+                                        onclick="return confirm('⚠️ CẢNH BÁO: \nBạn chắc chắn muốn XÓA đơn hàng {{ b.bill_code }}?');">
+                                        <i class="fas fa-trash-alt"></i>
                                     </button>
                                 </form>
                             </td>
@@ -435,16 +514,10 @@
             {% if total_pages > 1 %}
             <div class="pagination-wrapper">
                 <a href="{{ url_for(request.endpoint, page=current_page-1) }}"
-                    class="page-btn {% if current_page == 1 %}page-disabled{% endif %}">
-                    « Trước
-                </a>
-                <span class="page-current">
-                    {{ current_page }} / {{ total_pages }}
-                </span>
+                    class="page-btn {% if current_page == 1 %}page-disabled{% endif %}">« Trước</a>
+                <span class="page-current">{{ current_page }} / {{ total_pages }}</span>
                 <a href="{{ url_for(request.endpoint, page=current_page+1) }}"
-                    class="page-btn {% if current_page == total_pages %}page-disabled{% endif %}">
-                    Sau »
-                </a>
+                    class="page-btn {% if current_page == total_pages %}page-disabled{% endif %}">Sau »</a>
             </div>
             {% endif %}
         </div>
@@ -461,25 +534,26 @@
             <form id="editOrderForm" action="" method="POST">
                 <div class="modal-body">
                     <div class="form-group">
-                        <label>Mã đơn hàng (Bill Code)</label>
+                        <label>Mã đơn hàng</label>
                         <input type="text" id="displayBillCode" class="form-control" readonly
-                            style="font-weight: bold; color: var(--primary);">
+                            style="font-weight: bold; color: var(--primary); background: #eee;">
+                    </div>
+                    <div class="form-group">
+                        <label>Ngày tạo đơn</label>
+                        <input type="datetime-local" id="editCreatedAt" name="created_at" class="form-control" required>
                     </div>
                     <div class="form-group">
                         <label>Tên khách hàng <span style="color: red;">*</span></label>
-                        <input type="text" id="editCustomerName" name="customer_name" class="form-control" required
-                            placeholder="Nhập tên khách hàng...">
+                        <input type="text" id="editCustomerName" name="customer_name" class="form-control" required>
                     </div>
                     <div class="form-group">
                         <label>Số điện thoại <span style="color: red;">*</span></label>
-                        <input type="text" id="editCustomerPhone" name="customer_phone" class="form-control" required
-                            placeholder="Ví dụ: 0912345678" pattern="(0|\+84)\d{9,10}"
-                            title="Số điện thoại phải bắt đầu bằng 0 hoặc +84 và gồm 10-11 số">
+                        <input type="text" id="editCustomerPhone" name="customer_phone" class="form-control" required>
                     </div>
                     <div class="form-group">
                         <label>Địa chỉ nhận hàng <span style="color: red;">*</span></label>
                         <input type="text" id="editCustomerAddress" name="customer_address" class="form-control"
-                            required placeholder="Nhập địa chỉ chi tiết...">
+                            required>
                     </div>
                 </div>
                 <div class="modal-footer">
@@ -490,42 +564,254 @@
         </div>
     </div>
 
+    <div id="detailModal" class="modal-overlay">
+        <div class="modal-box modal-lg">
+            <div class="modal-header">
+                <h3><i class="fas fa-receipt" style="color: var(--primary);"></i> Chi tiết đơn hàng:
+                    <span id="detailCustomerName" style="color: var(--primary); font-weight: bold;">...</span>
+                </h3>
+                <span class="close-modal" onclick="closeModal('detailModal')"><i class="fas fa-times"></i></span>
+            </div>
+
+            <div class="modal-body">
+                <div style="margin-bottom: 10px; font-size: 0.9rem; color: #64748b;">
+                    Mã đơn: <span id="detailBillCodeDisplay" style="font-weight: bold; color: #333;">...</span>
+                </div>
+
+                <div style="max-height: 500px; overflow-y: auto;">
+                    <table class="detail-table">
+                        <thead>
+                            <tr>
+                                <th>Tên sản phẩm / Gói</th>
+                                <th>Số phiếu / Note</th>
+                                <th style="text-align:right;">Hành động</th>
+                            </tr>
+                        </thead>
+                        <tbody id="detailTableBody">
+                        </tbody>
+                    </table>
+                    <div id="loadingText" style="text-align: center; padding: 20px; color: #999; display: none;">
+                        <i class="fas fa-spinner fa-spin"></i> Đang tải dữ liệu...
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn-cancel" onclick="closeModal('detailModal')">Đóng</button>
+            </div>
+        </div>
+    </div>
+
     <script>
-        // Hàm mở modal sửa - Lấy dữ liệu từ data-attribute
+        // --- KHAI BÁO BIẾN TOÀN CỤC ---
+        let currentBillCode = '';
+
+        // --- 1. MODAL SỬA ĐƠN HÀNG (GIỮ NGUYÊN CŨ) ---
         function openEditModal(button) {
-            // Lấy dữ liệu an toàn từ nút bấm
             const id = button.dataset.id;
             const code = button.dataset.code;
             const name = button.dataset.name;
             const phone = button.dataset.phone;
             const address = button.dataset.address;
+            const created = button.dataset.created;
 
-            // Điền vào form
             document.getElementById('displayBillCode').value = code;
             document.getElementById('editCustomerName').value = name;
             document.getElementById('editCustomerPhone').value = phone;
             document.getElementById('editCustomerAddress').value = address;
 
-            // Cập nhật URL action cho form (Flask route: /edit-order/<id>)
-            // Logic: Ta dùng một URL mẫu có id=0, sau đó replace số 0 bằng ID thật
-            const templateAction = "{{ url_for('edit_order', bill_id=0) }}";
-            document.getElementById('editOrderForm').action = templateAction.replace('/0', '/' + id);
+            if (created && created != 'None') {
+                // Xử lý ngày tháng tránh lỗi
+                try {
+                    const formattedDate = created.replace(' ', 'T').substring(0, 16);
+                    document.getElementById('editCreatedAt').value = formattedDate;
+                } catch (e) { console.log("Lỗi ngày tháng:", e); }
+            }
 
-            // Hiện modal
+            // Cập nhật Action Form
+            const templateAction = "/edit_order/0";
+            document.getElementById('editOrderForm').action = templateAction.replace('0', id);
+
             document.getElementById('editOrderModal').classList.add('active');
         }
 
-        // Đóng modal
         function closeModal(modalId) {
             document.getElementById(modalId).classList.remove('active');
         }
 
-        // Đóng khi click ra ngoài vùng trắng
-        window.onclick = function (event) {
-            const modal = document.getElementById('editOrderModal');
-            if (event.target === modal) {
-                closeModal('editOrderModal');
+        // --- 2. MODAL CHI TIẾT SẢN PHẨM (ĐÃ SỬA LOGIC) ---
+
+        function openDetailModal(billCode, customerName) {
+            currentBillCode = billCode;
+
+            // Cập nhật tiêu đề modal
+            document.getElementById('detailCustomerName').innerText = customerName;
+            document.getElementById('detailBillCodeDisplay').innerText = billCode;
+
+            document.getElementById('detailModal').classList.add('active');
+
+            // Gọi hàm tải dữ liệu
+            loadItems();
+        }
+
+        // Hàm tải danh sách sản phẩm trong modal
+        function loadItems() {
+            const tbody = document.getElementById('detailTableBody');
+            const loader = document.getElementById('loadingText');
+
+            tbody.innerHTML = '';
+            loader.style.display = 'block';
+
+            fetch(`/api/get-items/${currentBillCode}`)
+                .then(res => res.json())
+                .then(data => {
+                    loader.style.display = 'none';
+                    if (data.success && data.items.length > 0) {
+                        data.items.forEach(item => {
+                            const row = `
+                            <tr>
+                                <td>
+                                    <div style="font-weight:600;">${item.product_name}</div>
+                                </td>
+                                <td style="color: #666;">
+                                    ${item.so_phieu ? '<span style="background:#f1f5f9; padding:2px 6px; border-radius:4px; font-size:0.85rem;">' + item.so_phieu + '</span>' : '---'}
+                                </td>
+                                <td style="text-align: right;">
+                                    <button class="btn-icon text-edit" title="Sửa món này" 
+                                        onclick="apiEditItem(${item.id}, ${item.product_id}, '${item.so_phieu || ''}')">
+                                        <i class="fas fa-edit"></i>
+                                    </button>
+                                    
+                                    <button class="btn-icon text-del" title="Xóa món này" 
+                                        onclick="apiDeleteItem(${item.id})">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                        `;
+                            tbody.innerHTML += row;
+                        });
+                    } else {
+                        tbody.innerHTML = `<tr><td colspan="3"><div class="empty-state">Khách này chưa có sản phẩm nào.</div></td></tr>`;
+                    }
+                })
+                .catch(err => {
+                    console.error(err);
+                    loader.style.display = 'none';
+                    tbody.innerHTML = '<tr><td colspan="3" style="text-align:center; color:red;">Lỗi kết nối server!</td></tr>';
+                });
+        }
+
+        // Hàm xóa sản phẩm (Giữ nguyên)
+        function apiDeleteItem(id) {
+            Swal.fire({
+                title: 'Xóa sản phẩm này?',
+                text: "Hành động này không thể hoàn tác!",
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#ef476f',
+                confirmButtonText: 'Xoá',
+                cancelButtonText: 'Hủy'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    fetch('/api/delete-item', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ id: id })
+                    })
+                        .then(res => res.json())
+                        .then(data => {
+                            if (data.success) {
+                                loadItems();
+                                Swal.fire('Đã xóa!', 'Sản phẩm đã bị xóa.', 'success');
+                            } else {
+                                Swal.fire('Lỗi', data.message, 'error');
+                            }
+                        });
+                }
+            })
+        }
+
+        // --- HÀM SỬA SẢN PHẨM MỚI (CÓ DROPDOWN CHỌN TÊN) ---
+        async function apiEditItem(itemId, currentProductId, currentNote) {
+            try {
+                // Bước 1: Gọi API lấy danh sách tất cả sản phẩm
+                const response = await fetch('/api/all-products');
+                const data = await response.json();
+
+                if (!data.success) {
+                    Swal.fire('Lỗi', 'Không thể tải danh sách sản phẩm', 'error');
+                    return;
+                }
+
+                // Bước 2: Tạo HTML cho thẻ Select (Dropdown)
+                let optionsHtml = '';
+                data.products.forEach(p => {
+                    // Nếu ID trùng với sản phẩm hiện tại thì chọn sẵn (selected)
+                    // Lưu ý: Dùng == để so sánh lỏng lẻo (string vs number)
+                    const isSelected = (p.id == currentProductId) ? 'selected' : '';
+                    optionsHtml += `<option value="${p.id}" ${isSelected}>${p.product_name}</option>`;
+                });
+
+                // Bước 3: Hiện SweetAlert với Select Box thay vì Input Text
+                Swal.fire({
+                    title: 'Chỉnh sửa sản phẩm',
+                    html:
+                        `<div style="text-align:left; margin-bottom:5px; font-weight:600; font-size:0.9rem;">Chọn sản phẩm</div>` +
+                        `<select id="swal-product-select" class="swal2-input" style="width: 80%; margin-bottom: 15px; padding: 0 10px;">` +
+                        optionsHtml +
+                        `</select>` +
+
+                        `<div style="text-align:left; margin-bottom:5px; font-weight:600; font-size:0.9rem;">Số phiếu / Ghi chú</div>` +
+                        `<input id="swal-note-input" class="swal2-input" placeholder="Số phiếu" value="${currentNote}" style="margin: 0; width: 80%;">`,
+
+                    focusConfirm: false,
+                    showCancelButton: true,
+                    confirmButtonText: 'Lưu thay đổi',
+                    cancelButtonText: 'Hủy',
+                    preConfirm: () => {
+                        return {
+                            newProductId: document.getElementById('swal-product-select').value,
+                            newNote: document.getElementById('swal-note-input').value
+                        }
+                    }
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        const { newProductId, newNote } = result.value;
+
+                        // Gọi API Update
+                        fetch('/api/update-item', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                id: itemId,
+                                product_id: newProductId, // Gửi ID mới
+                                so_phieu: newNote
+                            })
+                        })
+                            .then(res => res.json())
+                            .then(apiRes => {
+                                if (apiRes.success) {
+                                    loadItems(); // Load lại bảng
+                                    Swal.fire('Thành công!', 'Đã cập nhật sản phẩm.', 'success');
+                                } else {
+                                    Swal.fire('Lỗi', apiRes.message, 'error');
+                                }
+                            });
+                    }
+                });
+
+            } catch (error) {
+                console.error(error);
+                Swal.fire('Lỗi', 'Lỗi kết nối server khi tải sản phẩm', 'error');
             }
+        }
+
+        // Đóng modal khi click ra ngoài
+        window.onclick = function (event) {
+            const modal1 = document.getElementById('editOrderModal');
+            const modal2 = document.getElementById('detailModal');
+            if (event.target === modal1) closeModal('editOrderModal');
+            if (event.target === modal2) closeModal('detailModal');
         }
     </script>
 </body>

@@ -4,8 +4,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Quản lý Tài khoản Hệ thống</title>
+    <title>Quản lý Tài khoản</title>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link rel="icon" type="image/png" href="{{ url_for('static', filename='favicon.png') }}">
     <style>
         :root {
             --primary: #4361ee;
@@ -477,7 +478,8 @@
             </form>
         </div>
     </div>
-    <footer style="text-align:center;margin-top: 10px;" ;>@{{ now.year }}, Design by minhtruzz.dev@gmail.com</footer>
+    <footer style="text-align:center;margin-top: 10px;"> &copy;{{ now.year }}, Design by minhtruzz.dev@gmail.com
+    </footer>
     <script>
         // Hàm mở modal Thêm
         function openAddModal() {

@@ -4,9 +4,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Hệ thống Quản trị - Admin</title>
+    <title>Admin</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='vendor/sweetalert2.min.css') }}">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link rel="icon" type="image/png" href="{{ url_for('static', filename='favicon.png') }}">
     <style>
         :root {
             --primary: #4361ee;
@@ -537,7 +538,7 @@
                 </div>
                 {% endif %}
             </div>
-            <footer>@{{ now.year }}, Design by minhtruzz.dev@gmail.com</footer>
+            <footer> &copy; {{ now.year }}, Design by minhtruzz.dev@gmail.com</footer>
         </div>
     </div>
     <script src="{{ url_for('static', filename='vendor/sweetalert2.all.min.js') }}"></script>

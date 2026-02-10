@@ -3,8 +3,8 @@
 
 <head>
     <meta charset="UTF-8">
-    <title>Thông tin bảo hành</title>
-
+    <title>Thông Tin Bảo Hành</title>
+    <link rel="icon" type="image/png" href="{{ url_for('static', filename='favicon.png') }}">
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -105,7 +105,9 @@
         <div class="item">
             <span class="label">Khách hàng:</span> {{ product.customer_name }}
         </div>
-
+        <div class="item">
+            <span class="label">Số Điện Thoại:</span> {{ product.customer_phone }}
+        </div>
         <div class="item">
             <span class="label">Sản phẩm:</span> {{ product.product_name }}
         </div>
@@ -158,6 +160,8 @@
         </div>
     </div>
 </body>
-<footer>@{{ now.year }}, Design by minhtruzz.dev@gmail.com</footer>
+<footer>
+    &copy; {{ now.year }}, Design by minhtruzz.dev@gmail.com
+</footer>
 
 </html>
