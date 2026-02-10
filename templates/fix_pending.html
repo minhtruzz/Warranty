@@ -1,0 +1,192 @@
+<style>
+    body {
+        background-color: #f0f2f5;
+        font-family: 'Inter', 'Segoe UI', Roboto, sans-serif;
+    }
+
+    /* Đưa toàn bộ nội dung ra chính giữa màn hình */
+    .fix-wrapper {
+        min-height: 80vh;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        padding: 40px 20px;
+    }
+
+    .fix-container {
+        width: 100%;
+        max-width: 900px;
+        /* Độ rộng vừa phải để không bị loãng */
+    }
+
+    .page-title {
+        color: #1a202c;
+        font-weight: 800;
+        font-size: 1.75rem;
+        margin-bottom: 30px;
+        text-align: center;
+    }
+
+    .bill-card {
+        border: none;
+        border-radius: 20px;
+        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.05);
+        background: #ffffff;
+        padding: 30px;
+        /* Dãn khoảng cách bên trong card */
+    }
+
+    /* Cấu trúc bảng dãn dòng */
+    .table {
+        margin-bottom: 0;
+    }
+
+    .table thead th {
+        background-color: #f8fafc;
+        border-bottom: 2px solid #edf2f7;
+        padding: 15px;
+        color: #64748b;
+        text-transform: uppercase;
+        font-size: 0.8rem;
+        letter-spacing: 0.05em;
+    }
+
+    .table tbody td {
+        padding: 25px 15px;
+        /* Dãn khoảng cách giữa các dòng */
+        vertical-align: middle;
+        border-bottom: 1px solid #f1f5f9;
+    }
+
+    .bill-id-text {
+        color: #10b981;
+        font-weight: 700;
+        font-size: 1.1rem;
+    }
+
+    /* Ô nhập liệu to, rõ ràng */
+    .so-phieu-input {
+        border: 2px solid #e2e8f0;
+        border-radius: 12px;
+        padding: 12px 20px;
+        font-weight: 600;
+        text-transform: uppercase;
+        transition: all 0.2s ease;
+        width: 100%;
+    }
+
+    .so-phieu-input:focus {
+        border-color: #10b981;
+        box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.1);
+        outline: none;
+    }
+
+    /* Nút bấm nằm giữa và to */
+    .action-area {
+        margin-top: 40px;
+        display: flex;
+        justify-content: center;
+    }
+
+    .btn-update-all {
+        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+        color: white;
+        border: none;
+        border-radius: 50px;
+        padding: 16px 50px;
+        font-weight: 700;
+        font-size: 1rem;
+        letter-spacing: 1px;
+        box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);
+        transition: all 0.3s ease;
+    }
+
+    .btn-update-all:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 8px 25px rgba(16, 185, 129, 0.4);
+        filter: brightness(1.1);
+    }
+</style>
+<div class="fix-wrapper">
+    <div class="fix-container">
+        <h2 class="page-title">CẬP NHẬT SỐ PHIẾU CÒN THIẾU</h2>
+
+        <div class="card bill-card">
+            <div class="table-responsive">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th style="width: 35%;">Mã đợt hàng</th>
+                            <th class="text-center" style="width: 20%;">Số lượng</th>
+                            <th style="width: 45%;">Số Phiếu (Tự động Viết Hoa)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for group in groups %}
+                        <tr>
+                            <td><span class="bill-id-text">{{ group.ma_bill }}</span></td>
+                            <td class="text-center">
+                                <span class="badge" style="background: #ecfdf5; color: #10b981; padding: 8px 12px;">
+                                    {{ group.total }} sản phẩm
+                                </span>
+                            </td>
+                            <td>
+                                <input type="text" data-ma-bill="{{ group.ma_bill }}"
+                                    class="form-control so-phieu-input js-so-phieu" placeholder="NHẬP SỐ PHIẾU..."
+                                    oninput="this.value = this.value.toUpperCase()">
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="action-area mt-4">
+                <button class="btn-update-all" onclick="updateAllBills()">
+                    XÁC NHẬN CẬP NHẬT TẤT CẢ
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    function updateAllBills() {
+        const inputs = document.querySelectorAll('.js-so-phieu');
+        const items = [];
+
+        // Lấy tất cả dữ liệu từ các ô đã nhập
+        inputs.forEach(input => {
+            const val = input.value.trim().toUpperCase();
+            if (val) {
+                items.push({
+                    ma_bill: input.getAttribute('data-ma-bill'),
+                    so_phieu: val // Đặt tên key là so_phieu để Python nhận diện đúng
+                });
+            }
+        });
+
+        if (items.length === 0) {
+            alert("⚠️ Bạn chưa nhập bất kỳ số phiếu nào!");
+            return;
+        }
+
+        // Gửi mảng items lên hàm update_so_phieu
+        fetch('/update-so-phieu', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ items: items })
+        })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    // Chuyển hướng theo redirect_url nhận được từ Python
+                    window.location.href = data.redirect_url;
+                } else {
+                    alert("Lỗi: " + data.message);
+                }
+            })
+            .catch(err => alert("Lỗi kết nối máy chủ!"));
+    }
+</script>

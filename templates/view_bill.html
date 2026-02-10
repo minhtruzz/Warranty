@@ -1,0 +1,558 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Chi tiết Bill</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <style>
+        /* --- GIỮ NGUYÊN CSS GỐC CỦA BẠN --- */
+        body {
+            font-family: 'Segoe UI', Arial, sans-serif;
+            background: #f5f6fa;
+            padding: 30px;
+        }
+
+        .box {
+            max-width: 1000px;
+            margin: auto;
+            background: #fff;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 5px 25px rgba(0, 0, 0, .08);
+        }
+
+        h2 {
+            text-align: center;
+            color: #2f3640;
+            margin-bottom: 25px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+            table-layout: auto;
+        }
+
+        th {
+            background-color: #f8f9fa;
+            color: #444;
+            font-weight: 700;
+            padding: 15px 10px;
+            border: 1px solid #e1e8ed;
+            text-transform: uppercase;
+            font-size: 13px;
+        }
+
+        td {
+            border: 1px solid #e1e8ed;
+            padding: 18px 12px;
+            text-align: center;
+            color: #555;
+            font-size: 15px;
+            line-height: 1.4;
+            transition: all 0.3s ease;
+        }
+
+        th:nth-child(2),
+        td:nth-child(2) {
+            min-width: 150px;
+            color: #1a73e8;
+            font-weight: bold;
+        }
+
+        tr:hover {
+            background-color: #fcfcfc;
+        }
+
+        .description {
+            font-weight: bold;
+            text-align: center;
+            padding-top: 20px;
+            font-size: 30px;
+        }
+
+        footer {
+            text-align: center;
+            padding: 10px 0;
+            color: #ccc;
+            font-size: 15px;
+            margin-top: 80px;
+            letter-spacing: 0.5px;
+        }
+
+        /* CSS HỖ TRỢ INPUT TRONG BẢNG */
+        .input-so-phieu {
+            width: 100px;
+            padding: 5px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            text-align: center;
+            outline: none;
+        }
+
+        .input-so-phieu:disabled {
+            background-color: #f1f2f6 !important;
+            cursor: not-allowed;
+            color: #2f3640;
+            font-weight: bold;
+            border: 1px solid #ccc;
+        }
+
+        .btn-action {
+            cursor: pointer;
+            font-size: 20px;
+            margin-left: 5px;
+            vertical-align: middle;
+        }
+
+        .hidden-element {
+            display: none !important;
+        }
+
+        .btn-delete-detail {
+            background: none;
+            border: none;
+            color: #ff4757;
+            cursor: pointer;
+            font-size: 18px;
+            transition: transform 0.2s;
+        }
+
+        .btn-delete-detail:hover {
+            transform: scale(1.2);
+        }
+
+        /* CSS CHO NÚT IN TRONG BẢNG (NHỎ GỌN) */
+        .btn-print-row {
+            display: inline-block;
+            background-color: #2c3e50;
+            color: #fff;
+            padding: 6px 12px;
+            text-decoration: none;
+            border-radius: 4px;
+            font-size: 13px;
+            font-weight: bold;
+            transition: 0.2s;
+        }
+
+        .btn-print-row:hover {
+            background-color: #34495e;
+            color: #fff;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        }
+
+        .header-actions {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+
+<link rel="stylesheet" href="{{ url_for('static', filename='vendor/sweetalert2.min.css') }}">
+<script src="{{ url_for('static', filename='vendor/sweetalert2.all.min.js') }}"></script>
+<script src="{{ url_for('static', filename='js/global_modal.js') }}"></script>
+
+<body>
+    <div class="box">
+        <div class="product-img">
+            <img src="/static/logo/tinthanh.png" width="150" onerror="this.style.display='none'">
+        </div>
+
+        <h2>📄 CHI TIẾT SẢN PHẨM</h2>
+        <p><b>Khách hàng:</b> {{ customer_name }}</p>
+        <p><b>Số điện thoại:</b> {{ customer_phone}}</p>
+
+        <table id="billTable">
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Mã đơn hàng</th>
+                    <th>Số phiếu</th>
+                    <th>Sản phẩm</th>
+                    <th>Ngày mua</th>
+                    <th>Xem</th>
+                    <th>In Bill</th>
+
+                    {% if current_user.role == 'admin' %}
+                    <th>Xóa</th>
+                    {% endif %}
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in items %}
+                <tr id="row-{{ item.uuid }}">
+                    <td class="row-index">{{ loop.index }}</td>
+                    <td style="font-weight: bold; color: blue;">{{ item.ma_bill }}</td>
+                    <td>
+                        <div style="display: flex; align-items: center; justify-content: center; gap: 5px;">
+                            <input type="text" style="text-transform: uppercase"
+                                class="input-so-phieu sync-{{ item.ma_bill }}"
+                                value="{{ item.so_phieu if item.so_phieu else '' }}" {% if item.so_phieu %} disabled {%
+                                endif %}
+                                oninput="this.value = this.value.toUpperCase().replace(/\s/g, ''); syncValues('{{ item.ma_bill }}', this.value)"
+                                required>
+
+                            <span
+                                class="btn-save-{{ item.ma_bill }} btn-action {% if item.so_phieu %} hidden-element {% endif %}"
+                                onclick="handleSave('{{ item.ma_bill }}')" style="color: #2ecc71;">✔</span>
+
+                            {% if current_user.role == 'admin' %}
+                            <span
+                                class="btn-edit-{{ item.ma_bill }} btn-action {% if not item.so_phieu %} hidden-element {% endif %}"
+                                onclick="handleEdit('{{ item.ma_bill }}')" style="color: #f1c40f;">✏️</span>
+                            {% endif %}
+                        </div>
+                    </td>
+                    <td style="text-align: left;">{{ item.product_name }}</td>
+                    <td>{{ item.activated_at.strftime('%d/%m/%Y') }}</td>
+                    <td>
+                        <a href="/warranty/{{ item.uuid }}" target="_blank"
+                            style="text-decoration: none; color: #3498db; font-weight: bold;">
+                            Xem
+                        </a>
+                    </td>
+
+                    <td>
+                        <a href="/print_single/{{ item.uuid }}" target="_blank" class="btn-print-row">
+                            <i class="fas fa-print"></i> In
+                        </a>
+                    </td>
+
+                    {% if current_user.role == 'admin' %}
+                    <td>
+                        <button class="btn-delete-detail"
+                            onclick="deleteDetailItem('{{ item.uuid }}', '{{ item.product_name }}')">🗑️</button>
+                    </td>
+                    {% endif %}
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+    </div>
+
+    <script>
+        function syncValues(maBill, val) {
+            document.querySelectorAll('.sync-' + maBill).forEach(input => { input.value = val; });
+        }
+
+        function handleSave(maBill) {
+            const inputElement = document.querySelector('.sync-' + maBill);
+            const val = inputElement.value.trim().toUpperCase().replace(/\s/g, '');
+
+            if (!val) {
+                Swal.fire('Thông báo', 'Vui lòng nhập số phiếu!', 'warning');
+                return;
+            }
+
+            fetch('/update-so-phieu', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    items: [{ ma_bill: maBill, so_phieu: val }]
+                })
+            })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) {
+                        Swal.fire('Thành công!', 'Đã cập nhật số phiếu cho ' + maBill, 'success')
+                            .then(() => location.reload());
+                    } else {
+                        Swal.fire('Lỗi!', data.message, 'error');
+                    }
+                })
+                .catch(err => {
+                    console.error(err);
+                    Swal.fire('Lỗi!', 'Không thể kết nối đến máy chủ', 'error');
+                });
+        }
+
+        function handleEdit(maBill) {
+            document.querySelectorAll('.sync-' + maBill).forEach(i => i.disabled = false);
+            document.querySelectorAll('.btn-save-' + maBill).forEach(b => b.classList.remove('hidden-element'));
+            document.querySelectorAll('.btn-edit-' + maBill).forEach(b => b.classList.add('hidden-element'));
+        }
+
+        function deleteDetailItem(uuid, name) {
+            if (confirm("Bạn muốn xóa sản phẩm: " + name + " khỏi đơn hàng này?")) {
+                fetch('/delete-warranty-item/' + uuid, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                })
+                    .then(res => res.json())
+                    .then(data => {
+                        if (data.success) {
+                            const row = document.getElementById('row-' + uuid);
+                            row.style.opacity = '0';
+                            setTimeout(() => {
+                                row.remove();
+                                reIndexTable();
+                            }, 300);
+                        } else {
+                            alert("Lỗi: " + data.message);
+                        }
+                    });
+            }
+        }
+
+        function reIndexTable() {
+            const rows = document.querySelectorAll('.row-index');
+            rows.forEach((td, index) => {
+                td.innerText = index + 1;
+            });
+        }
+    </script>
+
+    {% if groups %}
+    <style>
+        .fix-wrapper {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background-color: rgba(0, 0, 0, 0.85);
+            /* Nền tối mờ */
+            z-index: 9999;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+            backdrop-filter: blur(5px);
+            transition: opacity 0.3s ease;
+            /* Hiệu ứng mờ dần */
+        }
+
+        .fix-container {
+            width: 100%;
+            max-width: 800px;
+            animation: slideDown 0.4s ease-out;
+        }
+
+        @keyframes slideDown {
+            from {
+                transform: translateY(-50px);
+                opacity: 0;
+            }
+
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        .modal-page-title {
+            color: #fff;
+            font-weight: 800;
+            font-size: 1.8rem;
+            margin-bottom: 20px;
+            text-align: center;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+        }
+
+        .bill-card {
+            border: none;
+            border-radius: 15px;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.3);
+            background: #ffffff;
+            padding: 30px;
+            overflow: hidden;
+        }
+
+        .bill-id-text {
+            color: #2563eb;
+            font-weight: 700;
+            font-size: 1.2rem;
+        }
+
+        .modal-so-phieu-input {
+            width: 100%;
+            padding: 12px 15px;
+            border: 2px solid #cbd5e1;
+            border-radius: 8px;
+            font-weight: 700;
+            font-size: 1rem;
+            color: #0f172a;
+            text-align: center;
+            text-transform: uppercase;
+        }
+
+        .modal-so-phieu-input:focus {
+            border-color: #2563eb;
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.2);
+        }
+
+        /* KHU VỰC CHỨA 2 NÚT */
+        .modal-actions {
+            display: flex;
+            gap: 15px;
+            margin-top: 25px;
+        }
+
+        /* Nút Lưu (To, Nổi bật) */
+        .btn-update-all {
+            flex: 2;
+            background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            padding: 15px;
+            font-weight: 700;
+            font-size: 1rem;
+            cursor: pointer;
+            box-shadow: 0 4px 15px rgba(37, 99, 235, 0.4);
+        }
+
+        .btn-update-all:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(37, 99, 235, 0.5);
+        }
+
+        /* Nút Đóng tạm thời (Nhỏ hơn, màu nhạt) */
+        .btn-close-temp {
+            flex: 1;
+            background: #f1f5f9;
+            color: #64748b;
+            border: 1px solid #cbd5e1;
+            border-radius: 10px;
+            padding: 15px;
+            font-weight: 600;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+
+        .btn-close-temp:hover {
+            background: #e2e8f0;
+            color: #334155;
+        }
+    </style>
+
+    <div class="fix-wrapper" id="modalMissingInfo">
+        <div class="fix-container">
+            <h2 class="modal-page-title">⚠️ CẦN NHẬP SỐ PHIẾU</h2>
+
+            <div class="bill-card">
+                <div style="text-align: center; margin-bottom: 20px; color: #64748b;">
+                    Đơn hàng này có sản phẩm chưa được nhập số phiếu.<br>
+                    Vui lòng nhập đầy đủ để tiếp tục.
+                </div>
+
+                <div class="table-responsive">
+                    <table class="table" style="width:100%">
+                        <thead>
+                            <tr>
+                                <th style="width: 30%;">Mã đợt hàng</th>
+                                <th class="text-center" style="width: 20%;">Số lượng</th>
+                                <th style="width: 50%;">Số Phiếu (Nhập vào đây)</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for group in groups %}
+                            <tr>
+                                <td><span class="bill-id-text">{{ group.ma_bill }}</span></td>
+                                <td class="text-center">
+                                    <span
+                                        style="background: #fee2e2; color: #ef4444; padding: 5px 10px; border-radius: 20px; font-weight: bold; font-size: 0.9rem;">
+                                        {{ group.total }} sp
+                                    </span>
+                                </td>
+                                <td>
+                                    <input type="text" data-ma-bill="{{ group.ma_bill }}"
+                                        class="modal-so-phieu-input js-modal-so-phieu" placeholder="VD: P12345..."
+                                        oninput="this.value = this.value.toUpperCase()" autofocus>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="modal-actions">
+                    <button class="btn-close-temp" onclick="closeModalTemp()">
+                        Đóng (Tạm thời)
+                    </button>
+                    <button class="btn-update-all" onclick="updateAllBillsModal()">
+                        LƯU & HOÀN TẤT
+                    </button>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Hàm đóng Modal tạm thời (Ẩn đi chứ không lưu)
+        function closeModalTemp() {
+            const modal = document.getElementById('modalMissingInfo');
+            modal.style.opacity = '0'; // Mờ dần
+            setTimeout(() => {
+                modal.style.display = 'none'; // Biến mất hẳn
+            }, 300);
+        }
+
+        // Hàm lưu dữ liệu
+        function updateAllBillsModal() {
+            const inputs = document.querySelectorAll('.js-modal-so-phieu');
+            const items = [];
+            let hasEmpty = false;
+
+            inputs.forEach(input => {
+                const val = input.value.trim().toUpperCase();
+                if (!val) {
+                    hasEmpty = true;
+                    input.style.borderColor = "#ef476f";
+                } else {
+                    input.style.borderColor = "#cbd5e1";
+                    items.push({
+                        ma_bill: input.getAttribute('data-ma-bill'),
+                        so_phieu: val
+                    });
+                }
+            });
+
+            if (hasEmpty) {
+                Swal.fire('Chưa nhập đủ!', 'Vui lòng nhập số phiếu hoặc bấm Đóng nếu muốn nhập sau!', 'warning');
+                return;
+            }
+
+            fetch('/update-so-phieu', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ items: items })
+            })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) {
+                        Swal.fire({
+                            title: 'Thành công!',
+                            text: 'Đã cập nhật số phiếu xong.',
+                            icon: 'success',
+                            timer: 1500,
+                            showConfirmButton: false
+                        }).then(() => {
+                            window.location.reload();
+                        });
+                    } else {
+                        Swal.fire('Lỗi!', data.message, 'error');
+                    }
+                })
+                .catch(err => {
+                    Swal.fire('Lỗi!', 'Không kết nối được server', 'error');
+                });
+        }
+    </script>
+    {% endif %}
+
+</body>
+<footer>@{{ now.year }}, Design by minhtruzz.dev@gmail.com</footer>
+
+</html>

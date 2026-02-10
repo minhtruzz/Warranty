@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Đăng nhập Hệ thống</title>
+    <style>
+        /* Reset cơ bản */
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            background-color: #f0f2f5;
+            /* Màu nền xám nhẹ hiện đại */
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+
+        /* Khung đăng nhập */
+        .login-card {
+            background: #ffffff;
+            width: 100%;
+            max-width: 400px;
+            padding: 40px;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+            /* Đổ bóng mềm */
+            text-align: center;
+        }
+
+        .login-card h2 {
+            color: #333;
+            margin-bottom: 25px;
+            font-weight: 600;
+            font-size: 24px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        /* Input fields */
+        .form-group {
+            margin-bottom: 20px;
+            text-align: left;
+        }
+
+        input[type="text"],
+        input[type="password"] {
+            width: 100%;
+            padding: 12px 15px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            font-size: 15px;
+            transition: all 0.3s ease;
+            outline: none;
+            background: #f9f9f9;
+        }
+
+        input[type="text"]:focus,
+        input[type="password"]:focus {
+            border-color: #4361ee;
+            /* Màu chủ đạo */
+            background: #fff;
+            box-shadow: 0 0 0 3px rgba(67, 97, 238, 0.15);
+        }
+
+        /* Checkbox Ghi nhớ */
+        .remember-me {
+            display: flex;
+            align-items: center;
+            margin-bottom: 25px;
+            font-size: 14px;
+            color: #555;
+            cursor: pointer;
+        }
+
+        .remember-me input {
+            width: 16px;
+            height: 16px;
+            margin-right: 8px;
+            cursor: pointer;
+            accent-color: #4361ee;
+        }
+
+        /* Nút đăng nhập */
+        button {
+            width: 100%;
+            padding: 12px;
+            background: #4361ee;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background 0.3s ease, transform 0.1s;
+        }
+
+        button:hover {
+            background: #304ffe;
+        }
+
+        button:active {
+            transform: scale(0.98);
+        }
+
+        /* Thông báo lỗi */
+        .alert-error {
+            background-color: #fee2e2;
+            color: #ef4444;
+            padding: 10px;
+            border-radius: 6px;
+            font-size: 14px;
+            margin-bottom: 20px;
+            border: 1px solid #fecaca;
+        }
+
+        /* Link đăng ký */
+        .link {
+            margin-top: 20px;
+            display: block;
+            color: #666;
+            text-decoration: none;
+            font-size: 14px;
+        }
+
+        .link:hover {
+            color: #4361ee;
+            text-decoration: underline;
+        }
+
+        /* Footer */
+        footer {
+            margin-top: 30px;
+            color: #999;
+            font-size: 13px;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="login-card">
+        <h2>🔒 Đăng Nhập</h2>
+
+        {% with messages = get_flashed_messages() %}
+        {% if messages %}
+        <div class="alert-error">
+            ⚠️ {{ messages[0] }}
+        </div>
+        {% endif %}
+        {% endwith %}
+
+        <form method="POST">
+            <div class="form-group">
+                <input type="text" name="username" placeholder="Tên đăng nhập" required autocomplete="off">
+            </div>
+
+            <div class="form-group">
+                <input type="password" name="password" placeholder="Mật khẩu" required>
+            </div>
+
+            <label class="remember-me">
+                <input type="checkbox" name="remember">
+                Ghi nhớ đăng nhập
+            </label>
+
+            <button type="submit">ĐĂNG NHẬP</button>
+        </form>
+
+        <a href="https://www.youtube.com/shorts/eXtUUoEDJeg" class="link">Chưa có tài khoản? <b>Liên hệ Admin
+                nhé!</b></a>
+    </div>
+
+    <footer>
+        &copy; {{ now.year }}, Design by minhtruzz.dev@gmail.com
+    </footer>
+
+</body>
+
+</html>

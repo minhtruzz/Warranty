@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quản lý Bảo hành</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #4361ee;
+            --secondary: #3f37c9;
+            --success: #2ecc71;
+            --warning: #f39c12;
+            --danger: #ef476f;
+            --dark: #2b2d42;
+            --light: #f8fafc;
+            --border: #e2e8f0;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f0f2f5;
+            margin: 0;
+            padding: 20px;
+            color: var(--dark);
+        }
+
+        .container {
+            max-width: 1100px;
+            margin: 0 auto;
+        }
+
+        .top-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 25px;
+        }
+
+        .btn-back {
+            text-decoration: none;
+            color: #64748b;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: 0.3s;
+        }
+
+        .btn-back:hover {
+            color: var(--primary);
+        }
+
+        .card {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+            overflow: hidden;
+        }
+
+        .card-header {
+            padding: 20px 25px;
+            border-bottom: 1px solid #f1f5f9;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .card-header h2 {
+            margin: 0;
+            font-size: 1.2rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: var(--dark);
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th {
+            background: #f8fafc;
+            padding: 15px;
+            text-align: left;
+            color: #64748b;
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            font-weight: 600;
+        }
+
+        td {
+            padding: 15px;
+            border-bottom: 1px solid #f1f5f9;
+            font-size: 0.95rem;
+        }
+
+        /* --- STATUS BADGES --- */
+        .status-badge {
+            padding: 5px 12px;
+            border-radius: 30px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            display: inline-block;
+        }
+
+        .active-w {
+            background: #dcfce7;
+            color: #166534;
+        }
+
+        .expired-w {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+
+        .search-box {
+            padding: 8px 15px;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            width: 250px;
+            outline: none;
+        }
+
+        /* --- PHÂN TRANG CSS --- */
+        .pagination-container {
+            padding: 15px 25px;
+            border-top: 1px solid var(--border);
+            display: flex;
+            justify-content: flex-end;
+            /* Căn phải */
+            align-items: center;
+            gap: 10px;
+        }
+
+        .page-btn {
+            text-decoration: none;
+            padding: 6px 12px;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            color: var(--dark);
+            background: #fff;
+            font-size: 0.9rem;
+            transition: all 0.2s;
+        }
+
+        .page-btn:hover {
+            background: var(--light);
+            border-color: #cbd5e1;
+        }
+
+        .page-info {
+            font-weight: 600;
+            font-size: 0.9rem;
+            color: #64748b;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <div class="top-bar">
+            <a href="{{ url_for('admin') }}" class="btn-back"><i class="fas fa-arrow-left"></i> Quay lại Dashboard</a>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h2><i class="fas fa-shield-alt" style="color: var(--primary);"></i> Danh sách Bảo hành</h2>
+                <form method="GET">
+                    <input type="text" name="search" class="search-box" placeholder="🔍 Tìm theo Mã Bill / Tên..."
+                        value="{{ request.args.get('search', '') }}">
+                </form>
+            </div>
+
+            <div class="table-wrapper">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Tên Sản Phẩm</th>
+                            <th>Mã Bill</th>
+                            <th>Ngày Kích Hoạt</th>
+                            <th>Ngày Hết Hạn</th>
+                            <th style="text-align: center;">Trạng Thái</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in warranty_items %}
+                        <tr>
+                            <td><strong>{{ item.product_name }}</strong></td>
+                            <td>{{ item.bill_code }}</td>
+                            <td>{{ item.activated_date_display }}</td>
+                            <td>{{ item.warranty_expiry }}</td>
+                            <td style="text-align: center;">
+                                {% if item.is_expired %}
+                                <span class="status-badge expired-w">Đã hết hạn</span>
+                                {% else %}
+                                <span class="status-badge active-w">Còn bảo hành</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            {% if total_pages > 1 %}
+            <div class="pagination-container">
+                {% if current_page > 1 %}
+                <a href="{{ url_for(request.endpoint, page=current_page-1, search=request.args.get('search', '')) }}"
+                    class="page-btn">
+                    <i class="fas fa-chevron-left"></i> Trước
+                </a>
+                {% endif %}
+
+                <span class="page-info">Trang {{ current_page }} / {{ total_pages }}</span>
+
+                {% if current_page < total_pages %} <a
+                    href="{{ url_for(request.endpoint, page=current_page+1, search=request.args.get('search', '')) }}"
+                    class="page-btn">
+                    Sau <i class="fas fa-chevron-right"></i>
+                    </a>
+                    {% endif %}
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <footer style="text-align: center;margin-top: 20px; color: #64748b; font-size: 0.9rem;">
+        &copy; {{ now.year }} | Design by minhtruzz.dev@gmail.com
+    </footer>
+</body>
+
+</html>

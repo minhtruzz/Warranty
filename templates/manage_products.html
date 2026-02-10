@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quản lý Sản Phẩm</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #4361ee;
+            --secondary: #3f37c9;
+            --success: #2ecc71;
+            --warning: #f39c12;
+            --danger: #ef476f;
+            --dark: #2b2d42;
+            --light: #f8f9fa;
+            --shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f0f2f5;
+            margin: 0;
+            padding: 20px;
+            color: var(--dark);
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        .top-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 25px;
+        }
+
+        .btn-back {
+            text-decoration: none;
+            color: #64748b;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: 0.2s;
+        }
+
+        .btn-back:hover {
+            color: var(--primary);
+        }
+
+        .card {
+            background: white;
+            border-radius: 16px;
+            box-shadow: var(--shadow);
+            overflow: hidden;
+            border: 1px solid rgba(0, 0, 0, 0.05);
+        }
+
+        .card-header {
+            padding: 25px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid #f1f5f9;
+        }
+
+        .card-header h2 {
+            margin: 0;
+            font-size: 1.4rem;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            color: var(--dark);
+        }
+
+        .table-wrapper {
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th {
+            background-color: #f8fafc;
+            padding: 16px 20px;
+            text-align: left;
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: #64748b;
+            border-bottom: 1px solid #f1f5f9;
+        }
+
+        td {
+            padding: 16px 20px;
+            border-bottom: 1px solid #f1f5f9;
+            font-size: 0.9rem;
+        }
+
+        tr:hover {
+            background-color: #fcfdfe;
+        }
+
+        .btn-add {
+            background: var(--primary);
+            color: white;
+            padding: 10px 20px;
+            text-decoration: none;
+            border-radius: 10px;
+            font-weight: 600;
+            font-size: 0.9rem;
+            transition: 0.3s;
+            border: none;
+            cursor: pointer;
+            box-shadow: 0 4px 12px rgba(67, 97, 238, 0.15);
+        }
+
+        /* Nút sửa đổi thành button để gọi JS */
+        .btn-edit {
+            color: var(--warning);
+            text-decoration: none;
+            margin-right: 15px;
+            font-weight: 500;
+            background: none;
+            border: none;
+            cursor: pointer;
+            padding: 0;
+            font-size: 0.9rem;
+        }
+
+        .btn-delete {
+            color: var(--danger);
+            border: none;
+            background: none;
+            cursor: pointer;
+            font-weight: 500;
+            padding: 0;
+            font-size: 0.9rem;
+        }
+
+        .simple-form {
+            display: flex;
+            gap: 10px;
+            padding: 20px;
+            background: #f8fafc;
+            border-bottom: 1px solid #eee;
+        }
+
+        .simple-form input {
+            flex: 1;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            outline: none;
+        }
+
+        /* --- CSS CHO MODAL --- */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            display: none;
+            /* Mặc định ẩn */
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            backdrop-filter: blur(2px);
+        }
+
+        .modal-overlay.active {
+            display: flex;
+            animation: fadeIn 0.2s ease-out;
+        }
+
+        .modal-box {
+            background: white;
+            width: 100%;
+            max-width: 500px;
+            border-radius: 12px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+            overflow: hidden;
+            transform: scale(0.95);
+            transition: transform 0.2s;
+        }
+
+        .modal-overlay.active .modal-box {
+            transform: scale(1);
+        }
+
+        .modal-header {
+            padding: 15px 20px;
+            background: #f8fafc;
+            border-bottom: 1px solid #eee;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .modal-header h3 {
+            margin: 0;
+            font-size: 1.1rem;
+        }
+
+        .close-modal {
+            cursor: pointer;
+            color: #64748b;
+            font-size: 1.2rem;
+        }
+
+        .modal-body {
+            padding: 20px;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 500;
+            font-size: 0.9rem;
+        }
+
+        .form-control {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            box-sizing: border-box;
+            font-size: 1rem;
+        }
+
+        .form-control:focus {
+            outline: none;
+            border-color: var(--primary);
+        }
+
+        .modal-footer {
+            padding: 15px 20px;
+            border-top: 1px solid #eee;
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+        }
+
+        .btn-save {
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 8px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+
+        .btn-cancel {
+            background: #e2e8f0;
+            color: #333;
+            border: none;
+            padding: 8px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+            }
+
+            to {
+                opacity: 1;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <div class="top-bar">
+            <a href="{{ url_for('admin') }}" class="btn-back"><i class="fas fa-arrow-left"></i> Quay lại Dashboard</a>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h2><i class="fas fa-cubes" style="color: var(--primary);"></i> Danh sách Sản Phẩm</h2>
+            </div>
+
+            <form action="{{ url_for('add_product') }}" method="POST" class="simple-form">
+                <input type="text" name="product_name" placeholder="Nhập tên sản phẩm mới vào đây..." required>
+                <button type="submit" class="btn-add"><i class="fas fa-plus"></i> Thêm Ngay</button>
+            </form>
+
+            <div class="table-wrapper">
+                <table>
+                    <thead>
+                        <tr>
+                            <th width="10%">ID</th>
+                            <th>Mã SP</th>
+                            <th>Tên Sản Phẩm</th>
+                            <th style="text-align: right;">Thao tác</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for p in products %}
+                        <tr>
+                            <td><span style="color: #94a3b8;">#{{ p.id }}</span></td>
+                            <td><code>{{ p.product_code }}</code></td>
+                            <td><strong>{{ p.product_name }}</strong></td>
+                            <td style="text-align: right;">
+                                <button type="button" class="btn-edit"
+                                    onclick="openEditModal('{{ p.id }}', '{{ p.product_name }}')">
+                                    <i class="fas fa-edit"></i> Sửa tên
+                                </button>
+
+                                <form action="{{ url_for('delete_product', p_id=p.id) }}" method="POST"
+                                    style="display:inline;">
+                                    <button type="submit" class="btn-delete"
+                                        onclick="return confirm('Xóa sản phẩm này?');">
+                                        <i class="fas fa-trash-alt"></i> Xóa
+                                    </button>
+                                </form>
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="4" style="text-align: center; padding: 30px; color: #999;">Chưa có sản phẩm
+                                nào.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div id="editProductModal" class="modal-overlay">
+        <div class="modal-box">
+            <div class="modal-header">
+                <h3>Cập nhật tên sản phẩm</h3>
+                <span class="close-modal" onclick="closeModal()"><i class="fas fa-times"></i></span>
+            </div>
+
+            <form id="editForm" action="{{ url_for('edit_product', p_id=0) }}" method="POST">
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label>Mã sản phẩm (ID): <span id="displayId"
+                                style="font-weight:bold; color:var(--primary)"></span></label>
+                    </div>
+                    <div class="form-group">
+                        <label for="editName">Tên sản phẩm mới</label>
+                        <input type="text" id="editName" name="product_name" class="form-control" required>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn-cancel" onclick="closeModal()">Hủy</button>
+                    <button type="submit" class="btn-save">Lưu thay đổi</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    <footer style="text-align: center;margin-top: 20px;">@{{ now.year }}, Design by minhtruzz.dev@gmail.com</footer>
+    <script>
+        const modal = document.getElementById('editProductModal');
+        const editForm = document.getElementById('editForm');
+        const editNameInput = document.getElementById('editName');
+        const displayIdSpan = document.getElementById('displayId');
+
+        // Lưu lại base action URL (ví dụ: /edit-product/0)
+        const baseAction = "{{ url_for('edit_product', p_id=0) }}";
+
+        function openEditModal(id, currentName) {
+            // 1. Điền thông tin cũ vào form
+            editNameInput.value = currentName;
+            displayIdSpan.innerText = '#' + id;
+
+            // 2. Cập nhật action của form để trỏ đúng ID
+            // Thay số 0 ở cuối đường dẫn bằng ID thật
+            // Cách replace này an toàn miễn là url_for tạo ra link kết thúc bằng số 0
+            editForm.action = baseAction.replace('0', id);
+
+            // 3. Hiện modal
+            modal.classList.add('active');
+
+            // Focus vào ô nhập liệu
+            setTimeout(() => editNameInput.focus(), 100);
+        }
+
+        function closeModal() {
+            modal.classList.remove('active');
+        }
+
+        // Đóng modal khi click ra ngoài
+        modal.addEventListener('click', function (e) {
+            if (e.target === modal) {
+                closeModal();
+            }
+        });
+    </script>
+</body>
+
+
+</html>

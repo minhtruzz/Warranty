@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Thông tin bảo hành</title>
+
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #f5f6fa;
+            padding: 30px;
+        }
+
+        .box {
+            max-width: 420px;
+            margin: auto;
+            background: #fff;
+            padding: 25px;
+            border-radius: 12px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, .1);
+        }
+
+        h2 {
+            text-align: center;
+            color: #2f3640;
+            margin-bottom: 20px;
+        }
+
+        .product-img {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .product-img img {
+            max-width: 100%;
+            border-radius: 10px;
+        }
+
+        .item {
+            margin: 12px 0;
+            font-size: 16px;
+        }
+
+        .label {
+            font-weight: bold;
+            color: #555;
+        }
+
+        .status {
+            margin-top: 20px;
+            padding: 12px;
+            border-radius: 8px;
+            text-align: center;
+            font-weight: bold;
+        }
+
+        .green {
+            background: #e6fffa;
+            color: #047857;
+        }
+
+        .orange {
+            background: #fff7ed;
+            color: #c2410c;
+        }
+
+        .red {
+            background: #fee2e2;
+            color: #b91c1c;
+        }
+
+        .description {
+            text-align: center;
+            margin-top: 20px;
+            font-weight: bold;
+        }
+
+        footer {
+            position: static;
+            text-align: center;
+            padding: 10px 0;
+            color: #ccc;
+            font-size: 15px;
+            width: 100%;
+            margin-top: 80px;
+            letter-spacing: 0.5px;
+        }
+    </style>
+</head>
+<link rel="stylesheet" href="{{ url_for('static', filename='vendor/sweetalert2.min.css') }}">
+<script src="{{ url_for('static', filename='vendor/sweetalert2.all.min.js') }}"></script>
+
+<script src="{{ url_for('static', filename='js/global_modal.js') }}"></script>
+
+<body>
+
+    <div class="box">
+        <h2>THÔNG TIN BẢO HÀNH</h2>
+
+        <div class="product-img">
+            <img src="/static/logo/tinthanh.png" width="150">
+        </div>
+
+        <div class="item">
+            <span class="label">Khách hàng:</span> {{ product.customer_name }}
+        </div>
+
+        <div class="item">
+            <span class="label">Sản phẩm:</span> {{ product.product_name }}
+        </div>
+
+        <div class="item">
+            <span class="label">Ngày kích hoạt:</span>
+            {{ activated_date_str }}
+        </div>
+
+        <div class="item">
+            <span class="label">Hết hạn:</span>
+            {{ end_date_str }}
+        </div>
+
+        {% if remaining_days > 0 %}
+        <div class="status green">
+            🟢 Còn {{ remaining_days }} ngày bảo hành
+        </div>
+        {% elif remaining_days == 0 %}
+        <div class="status orange">
+            🟡 Hết hạn hôm nay
+        </div>
+        {% else %}
+        <div class="status red">
+            🔴 Đã hết hạn bảo hành
+        </div>
+        {% endif %}
+
+        <div class="description">Cảm ơn quý khách</div>
+    </div>
+    <div class="box" style="margin-top: 20px;">
+        <h2 style="text-align: center; text-transform: uppercase;">Thông tin sản phẩm bảo hành</h2>
+
+        <div style="padding: 15px; border-top: 1px solid #eee;">
+            <p style="font-size: 16px; color: #333;">
+                <strong>Chế độ bảo hành riêng cho sản phẩm này:</strong>
+            </p>
+
+            <div style="background: #fff9c4; padding: 15px; border-left: 5px solid #fbc02d; border-radius: 4px;">
+                {% if product.info_warranty %}
+                {{ product.info_warranty }}
+                {% else %}
+                Sản phẩm được bảo hành chính hãng theo tiêu chuẩn của nhà sản xuất.
+                {% endif %}
+            </div>
+
+            <p style="margin-top: 15px; font-style: italic; font-size: 13px; color: #666;">
+                * Lưu ý: Vui lòng giữ tem bảo hành nguyên vẹn để được hỗ trợ tốt nhất.
+            </p>
+        </div>
+    </div>
+</body>
+<footer>@{{ now.year }}, Design by minhtruzz.dev@gmail.com</footer>
+
+</html>

@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <style>
+        /* Thiết lập chung cho trang in */
+        @media print {
+            body {
+                margin: 10mm;
+            }
+
+            .no-print {
+                display: none !important;
+                /* Quan trọng: Ẩn khi in */
+            }
+        }
+
+        body {
+            font-family: 'Segoe UI', Arial, sans-serif;
+            background-color: #f4f4f4;
+            margin: 20px;
+        }
+
+        /* Container chính dùng Flexbox */
+        .qr-container {
+            display: flex;
+            flex-wrap: wrap;
+            /* Cho phép nhảy hàng */
+            justify-content: center;
+            /* Căn giữa các item */
+            gap: 20px;
+            /* Khoảng cách giữa các mã QR */
+        }
+
+        /* Từng khung bao quanh QR */
+        .qr-item {
+            background: white;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            text-align: center;
+            page-break-inside: avoid;
+            /* Tránh bị cắt đôi khi in */
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+            width: 220px;
+            /* Cố định chiều rộng khung */
+        }
+
+        .qr-item img {
+            width: 200px;
+            height: 200px;
+            display: block;
+            margin: 0 auto;
+        }
+
+        .qr-label {
+            margin-top: 10px;
+            font-size: 14px;
+            font-weight: bold;
+            color: #333;
+            word-break: break-all;
+            /* Tránh tràn chữ nếu ID quá dài */
+        }
+    </style>
+</head>
+<link rel="stylesheet" href="{{ url_for('static', filename='vendor/sweetalert2.min.css') }}">
+<script src="{{ url_for('static', filename='vendor/sweetalert2.all.min.js') }}"></script>
+
+<script src="{{ url_for('static', filename='js/global_modal.js') }}"></script>
+
+<body onload="window.print()">
+
+    <div class="qr-container">
+        {% for item in qrs %}
+        <div class="qr-item">
+            <img src="{{ url_for('static', filename='qr/' + item.uuid + '.png') }}">
+
+            <div class="qr-label no-print">
+                Mã: {{ item.uuid }}
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+</body>
+
+</html>
