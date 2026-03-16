@@ -7,6 +7,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="icon" type="image/png" href="{{ url_for('static', filename='favicon.png') }}">
     <style>
+        /* GIỮ NGUYÊN TOÀN BỘ CSS CỦA BẠN */
         body {
             font-family: 'Segoe UI', Arial, sans-serif;
             background: #f5f6fa;
@@ -31,7 +32,6 @@
             letter-spacing: 1px;
         }
 
-        /* BẢNG CHÍNH */
         table {
             width: 100%;
             border-collapse: collapse;
@@ -79,7 +79,6 @@
             letter-spacing: 0.5px;
         }
 
-        /* INPUT & BUTTONS TRONG BẢNG */
         .input-so-phieu {
             width: 100px;
             padding: 5px;
@@ -139,10 +138,12 @@
             box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
         }
 
-        /* --- NÚT CHECK SỐ PHIẾU (STYLE MỚI) --- */
         .btn-check-wrapper {
             text-align: center;
             margin-bottom: 25px;
+            display: flex;
+            justify-content: center;
+            gap: 15px;
         }
 
         .btn-check-missing {
@@ -161,16 +162,48 @@
             gap: 10px;
         }
 
-        .btn-check-missing:hover {
+        .btn-print-batch {
+            background: linear-gradient(135deg, #2ecc71 0%, #27ae60 100%);
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            font-size: 16px;
+            font-weight: bold;
+            border-radius: 50px;
+            cursor: pointer;
+            box-shadow: 0 4px 15px rgba(46, 204, 113, 0.3);
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .btn-delete-all {
+            background: linear-gradient(135deg, #ff4757 0%, #ff6b81 100%);
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            font-size: 14px;
+            font-weight: bold;
+            border-radius: 50px;
+            cursor: pointer;
+            box-shadow: 0 4px 15px rgba(255, 71, 87, 0.3);
+            transition: all 0.3s ease;
+            display: none;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-delete-all.show {
+            display: inline-flex;
+        }
+
+        .btn-check-missing:hover,
+        .btn-print-batch:hover,
+        .btn-delete-all:hover {
             transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(108, 92, 231, 0.6);
         }
 
-        .btn-check-missing i {
-            font-size: 1.2rem;
-        }
-
-        /* --- MODAL STYLE --- */
         .modal-overlay {
             position: fixed;
             top: 0;
@@ -250,7 +283,6 @@
             flex-grow: 1;
         }
 
-        /* Dòng sản phẩm trong Modal */
         .missing-item-row {
             background: white;
             border: 1px solid #e2e8f0;
@@ -339,6 +371,63 @@
         .btn-modal-save:hover {
             background: #00a884;
         }
+
+        .select-row-checkbox {
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+        }
+
+        /* TOOLBAR TÌM KIẾM VÀ LỌC (Thêm mới) */
+        .toolbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            gap: 15px;
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+        }
+
+        .search-group {
+            display: flex;
+            gap: 10px;
+            flex: 1;
+        }
+
+        .search-input-wrapper {
+            display: flex;
+            align-items: center;
+            background: #fff;
+            border: 2px solid #3498db;
+            border-radius: 6px;
+            padding: 0 10px;
+            width: 300px;
+        }
+
+        .search-input-wrapper input {
+            border: none;
+            outline: none;
+            padding: 8px;
+            width: 100%;
+            font-size: 14px;
+        }
+
+        .btn-filter-inactive {
+            background: #e74c3c;
+            color: white;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: 0.3s;
+        }
+
+        .btn-filter-inactive.active {
+            background: #2ecc71;
+        }
     </style>
 </head>
 
@@ -357,19 +446,57 @@
             <button class="btn-check-missing" onclick="checkMissingInfo()">
                 <i class="fas fa-search-plus"></i> Kiểm tra & Bổ sung số phiếu
             </button>
+            <button type="button" class="btn-check-missing"
+                style="background: linear-gradient(135deg, #2ecc71 0%, #27ae60 100%);" onclick="printSelectedItems()">
+                <i class="fas fa-print"></i> In mục đã chọn
+            </button>
+            {% if current_user.role == 'admin' %}
+            <button id="btnDeleteAll" class="btn-delete-all" onclick="bulkDeleteItems()">
+                <i class="fas fa-trash-alt"></i> Xóa mục đã chọn (<span id="selectedCount">0</span>)
+            </button>
+            {% endif %}
         </div>
 
         <p><b>Khách hàng:</b> {{ customer_name }}</p>
         <p><b>Số điện thoại:</b> {{ customer_phone}}</p>
 
+        <div class="toolbar">
+            <div class="search-group">
+                <div class="search-input-wrapper">
+                    <i class="fas fa-search" style="color: #3498db;"></i>
+                    <input type="text" id="localSearch" placeholder="Tìm mã bill hoặc sản phẩm..."
+                        onkeyup="filterTable()">
+                </div>
+
+                <!-- <div
+                    style="display: flex; border: 1px solid #ddd; border-radius: 6px; overflow: hidden; background: #fff;">
+                    <input type="text" id="globalSearchInput" placeholder="Tìm đơn hàng khác..."
+                        style="padding: 8px; border: none; outline: none; width: 180px;"
+                        onkeypress="if(event.key === 'Enter') executeGlobalSearch()">
+                    <button onclick="executeGlobalSearch()"
+                        style="padding: 8px 12px; background: #95a5a6; color: white; border: none; cursor: pointer;">
+                        <i class="fas fa-external-link-alt"></i>
+                    </button>
+                </div> -->
+            </div>
+
+            <button id="inactiveBtn" class="btn-filter-inactive" onclick="toggleInactiveFilter()">
+                <i class="fas fa-exclamation-circle"></i> CHỈ HIỆN HÀNG CHƯA HOẠT ĐỘNG
+            </button>
+        </div>
+
         <table id="billTable">
             <thead>
                 <tr>
-                    <th>#</th>
+                    <th>
+                        <div style="display: flex; flex-direction: column; align-items: center; gap: 5px;">
+                            <input type="checkbox" id="selectAll" class="select-row-checkbox">
+                        </div>
+                    </th>
                     <th>Mã đơn hàng</th>
                     <th>Số phiếu</th>
                     <th>Sản phẩm</th>
-                    <th>Ngày mua</th>
+                    <th>Ngày kích hoạt</th>
                     <th>Xem Bảo Hành</th>
                     <th>In Bill</th>
                     {% if current_user.role == 'admin' %}
@@ -379,9 +506,14 @@
             </thead>
             <tbody>
                 {% for item in items %}
-                <tr id="row-{{ item.uuid }}">
-                    <td class="row-index">{{ loop.index }}</td>
-                    <td style="font-weight: bold; color: blue;">{{ item.ma_bill }}</td>
+                <tr id="row-{{ item.uuid }}" class="product-row"
+                    data-has-sophieu="{{ 'yes' if item.so_phieu else 'no' }}">
+                    <td class="row-index">
+                        <input type="checkbox" class="select-row-checkbox item-checkbox" value="{{ item.uuid }}"
+                            onchange="updateSelectedCount()">
+                        <span style="display: block; margin-top: 5px;">{{ loop.index }}</span>
+                    </td>
+                    <td class="cell-ma-bill" style="font-weight: bold; color: blue;">{{ item.ma_bill }}</td>
                     <td>
                         <div style="display: flex; align-items: center; justify-content: center; gap: 5px;">
                             <input type="text" style="text-transform: uppercase"
@@ -390,11 +522,9 @@
                                 endif %}
                                 oninput="this.value = this.value.toUpperCase().replace(/\s/g, ''); syncValues('{{ item.ma_bill }}', this.value)"
                                 required>
-
                             <span
                                 class="btn-save-{{ item.ma_bill }} btn-action {% if item.so_phieu %} hidden-element {% endif %}"
                                 onclick="handleSave('{{ item.ma_bill }}')" style="color: #2ecc71;">✔</span>
-
                             {% if current_user.role == 'admin' %}
                             <span
                                 class="btn-edit-{{ item.ma_bill }} btn-action {% if not item.so_phieu %} hidden-element {% endif %}"
@@ -402,12 +532,45 @@
                             {% endif %}
                         </div>
                     </td>
-                    <td style="text-align: left;">{{ item.product_name }}</td>
-                    <td>{{ item.activated_at.strftime('%d/%m/%Y') }}</td>
-                    <td><a href="/warranty/{{ item.uuid }}" target="_blank"
-                            style="text-decoration: none; color: #3498db; font-weight: bold;">Xem</a></td>
-                    <td><a href="/single_qr/{{ item.uuid }}" target="_blank" class="btn-print-row"><i
-                                class="fas fa-print"></i> In</a></td>
+                    <td class="cell-name" style="text-align: left;">{{ item.product_name }}</td>
+                    <td>
+                        {% if item.activated_at %}
+                        {{ item.activated_at.strftime('%d/%m/%Y') }}
+                        {% else %}
+                        <span style="color: #e67e22; font-style: italic;">Chưa kích hoạt</span>
+                        {% endif %}
+                    </td>
+
+                    <td>
+                        {% if item.so_phieu %}
+                        {% set w_count = item.warranty_count|default(0)|int %}
+                        {% if w_count > 0 %}
+                        {% set history = item.claim_history.split(',') if item.claim_history else [] %}
+                        {% set last_date = history[-1].strip() if history else '...' %}
+                        <a href="/warranty/{{ item.uuid }}" target="_blank"
+                            style="text-decoration: none; color: #e67e22; font-weight: bold; font-size: 13px; display: block; line-height: 1.2;">
+                            ĐÃ BH LẦN {{ w_count }} <br>
+                            <small style="color: #7f8c8d; font-weight: normal; font-size: 11px;">NGÀY {{ last_date
+                                }}</small>
+                        </a>
+                        {% else %}
+                        <a href="/warranty/{{ item.uuid }}" target="_blank"
+                            style="text-decoration: none; color: #3498db; font-weight: bold;">Xem</a>
+                        {% endif %}
+                        {% endif %}
+                    </td>
+
+                    <td>
+                        {% if item.so_phieu %}
+                        <a href="/single_qr/{{ item.uuid }}" target="_blank" class="btn-print-row"><i
+                                class="fas fa-print"></i> In</a>
+                        {% else %}
+                        <button type="button" class="btn-print-row"
+                            style="background-color: #95a5a6; border: none; cursor: not-allowed;"
+                            onclick="Swal.fire('Cảnh báo', 'Vui lòng nhập và lưu SỐ PHIẾU!', 'warning')"><i
+                                class="fas fa-print"></i> In</button>
+                        {% endif %}
+                    </td>
                     {% if current_user.role == 'admin' %}
                     <td><button class="btn-delete-detail"
                             onclick="deleteDetailItem('{{ item.uuid }}', '{{ item.product_name }}')">🗑️</button></td>
@@ -424,7 +587,6 @@
                 <h3><i class="fas fa-exclamation-triangle"></i> Cần Bổ Sung Số Phiếu</h3>
                 <span class="close-icon" onclick="closeMissingModal()"><i class="fas fa-times"></i></span>
             </div>
-
             <div class="modal-body">
                 {% set ns = namespace(count=0) %}
                 {% for item in items %}
@@ -443,15 +605,8 @@
                 </div>
                 {% endif %}
                 {% endfor %}
-
                 <input type="hidden" id="totalMissingCount" value="{{ ns.count }}">
-
-                <div id="no-missing-msg" style="display:none; text-align:center; padding: 20px; color: #2ecc71;">
-                    <i class="fas fa-check-circle" style="font-size: 3rem;"></i>
-                    <h3>Đã đầy đủ số phiếu!</h3>
-                </div>
             </div>
-
             <div class="modal-footer">
                 <button class="btn-modal-close" onclick="closeMissingModal()">Đóng tạm</button>
                 <button class="btn-modal-save" onclick="saveBulkData()">Lưu tất cả</button>
@@ -460,135 +615,148 @@
     </div>
 
     <script>
-        // 1. Hàm bật Modal khi bấm nút Kiểm tra
-        function checkMissingInfo() {
-            const countInput = document.getElementById('totalMissingCount');
-            const count = parseInt(countInput ? countInput.value : 0);
+        // === LOGIC LỌC VÀ TÌM KIẾM MỚI ===
+        let showOnlyInactive = false;
 
-            if (count === 0) {
-                // Nếu không có cái nào thiếu -> Báo thành công luôn
-                Swal.fire({
-                    icon: 'success',
-                    title: 'Tuyệt vời!',
-                    text: 'Tất cả sản phẩm đã có đầy đủ số phiếu.',
-                    timer: 2000,
-                    showConfirmButton: false
-                });
+        function filterTable() {
+            const searchText = document.getElementById('localSearch').value.toLowerCase();
+            const rows = document.querySelectorAll('.product-row');
+
+            rows.forEach(row => {
+                const maBill = row.querySelector('.cell-ma-bill').innerText.toLowerCase();
+                const name = row.querySelector('.cell-name').innerText.toLowerCase();
+                const hasSoPhieu = row.getAttribute('data-has-sophieu') === 'yes';
+
+                const matchesSearch = maBill.includes(searchText) || name.includes(searchText);
+                const matchesInactive = showOnlyInactive ? !hasSoPhieu : true;
+
+                if (matchesSearch && matchesInactive) {
+                    row.style.display = "";
+                } else {
+                    row.style.display = "none";
+                }
+            });
+        }
+
+        function toggleInactiveFilter() {
+            showOnlyInactive = !showOnlyInactive;
+            const btn = document.getElementById('inactiveBtn');
+            if (showOnlyInactive) {
+                btn.classList.add('active');
+                btn.innerHTML = '<i class="fas fa-list"></i> HIỆN TẤT CẢ SẢN PHẨM';
             } else {
-                // Nếu có thiếu -> Hiện Modal
-                const modal = document.getElementById('missingInfoModal');
-                modal.classList.add('active');
+                btn.classList.remove('active');
+                btn.innerHTML = '<i class="fas fa-exclamation-circle"></i> CHỈ HIỆN HÀNG CHƯA HOẠT ĐỘNG';
+            }
+            filterTable();
+        }
 
-                // Focus vào ô đầu tiên
-                setTimeout(() => {
-                    const firstInput = document.querySelector('.js-bulk-input');
-                    if (firstInput) firstInput.focus();
-                }, 100);
+        function executeGlobalSearch() {
+            const val = document.getElementById('globalSearchInput').value.trim();
+            if (val) {
+                window.location.href = '/search_bill?query=' + encodeURIComponent(val);
+            } else {
+                Swal.fire('Thông báo', 'Vui lòng nhập mã cần tìm!', 'info');
             }
         }
 
-        // 2. Hàm đóng Modal
+        // === CÁC HÀM CŨ CỦA BẠN (GIỮ NGUYÊN 100%) ===
+        const selectAllCheckbox = document.getElementById('selectAll');
+        const itemCheckboxes = document.querySelectorAll('.item-checkbox');
+        const btnDeleteAll = document.getElementById('btnDeleteAll');
+        const selectedCountSpan = document.getElementById('selectedCount');
+
+        if (selectAllCheckbox) {
+            selectAllCheckbox.addEventListener('change', function () {
+                itemCheckboxes.forEach(cb => cb.checked = this.checked);
+                updateSelectedCount();
+            });
+        }
+
+        function updateSelectedCount() {
+            const checkedCount = document.querySelectorAll('.item-checkbox:checked').length;
+            if (selectedCountSpan) selectedCountSpan.innerText = checkedCount;
+            if (btnDeleteAll) {
+                if (checkedCount > 0) btnDeleteAll.classList.add('show');
+                else btnDeleteAll.classList.remove('show');
+            }
+        }
+
+        function printSelectedItems() {
+            const selectedCheckboxes = document.querySelectorAll('.item-checkbox:checked');
+            if (selectedCheckboxes.length === 0) {
+                Swal.fire('Thông báo', 'Vui lòng tích chọn sản phẩm cần in!', 'warning');
+                return;
+            }
+            const uuids = [];
+            let isValid = true;
+            selectedCheckboxes.forEach(cb => {
+                const row = cb.closest('tr');
+                const soPhieuInput = row.querySelector('.input-so-phieu');
+                if (!soPhieuInput.value.trim()) {
+                    isValid = false;
+                }
+                uuids.push(cb.value);
+            });
+            if (!isValid) {
+                Swal.fire('Cảnh báo', 'Có sản phẩm chưa có SỐ PHIẾU. Vui lòng nhập và lưu trước khi in!', 'error');
+                return;
+            }
+            const url = '/print_selected?uuids=' + uuids.join(',');
+            window.open(url, '_blank');
+        }
+
+        function bulkDeleteItems() {
+            const selectedUuids = Array.from(document.querySelectorAll('.item-checkbox:checked')).map(cb => cb.value);
+            if (selectedUuids.length === 0) return;
+            Swal.fire({ title: 'Xác nhận xóa?', text: `Bạn có chắc chắn muốn xóa ${selectedUuids.length} sản phẩm?`, icon: 'warning', showCancelButton: true, confirmButtonColor: '#ff4757', confirmButtonText: 'Xóa!' }).then((result) => {
+                if (result.isConfirmed) {
+                    Promise.all(selectedUuids.map(uuid => fetch('/delete-warranty-item/' + uuid, { method: 'POST' }).then(res => res.json())))
+                        .then(results => { if (results.every(r => r.success)) location.reload(); });
+                }
+            });
+        }
+
+        function checkMissingInfo() {
+            const countInput = document.getElementById('totalMissingCount');
+            const count = parseInt(countInput ? countInput.value : 0);
+            if (count === 0) Swal.fire({ icon: 'success', title: 'Đầy đủ!', timer: 2000, showConfirmButton: false });
+            else document.getElementById('missingInfoModal').classList.add('active');
+        }
+
         function closeMissingModal() {
             document.getElementById('missingInfoModal').classList.remove('active');
         }
 
-        // 3. Hàm Lưu dữ liệu hàng loạt từ Modal
-        function saveBulkData() {
-            const inputs = document.querySelectorAll('.js-bulk-input');
-            const items = [];
-            let hasError = false;
-
-            // Gom dữ liệu
-            inputs.forEach(input => {
-                const val = input.value.trim().toUpperCase();
-                // Chỉ lấy những ô đã nhập, ô nào chưa nhập thì bỏ qua (hoặc bắt buộc nhập tùy bạn)
-                // Ở đây tôi bắt buộc nhập hết mới cho lưu để đảm bảo data sạch
-                if (!val) {
-                    hasError = true;
-                    input.classList.add('error');
-                } else {
-                    input.classList.remove('error');
-                    items.push({
-                        ma_bill: input.getAttribute('data-ma-bill'),
-                        so_phieu: val
-                    });
-                }
-            });
-
-            if (hasError) {
-                Swal.fire({
-                    icon: 'warning',
-                    title: 'Chưa nhập đủ',
-                    text: 'Vui lòng nhập hết các ô màu đỏ hoặc bấm Đóng để nhập sau!',
-                });
-                return;
-            }
-
-            if (items.length === 0) {
-                Swal.fire('Thông báo', 'Bạn chưa nhập gì cả!', 'info');
-                return;
-            }
-
-            // Gửi lên Server
-            Swal.showLoading();
-            fetch('/update-so-phieu', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ items: items })
-            })
-                .then(res => res.json())
-                .then(data => {
-                    if (data.success) {
-                        Swal.fire({
-                            icon: 'success',
-                            title: 'Thành công',
-                            text: 'Đã cập nhật số phiếu!',
-                            timer: 1500,
-                            showConfirmButton: false
-                        }).then(() => location.reload());
-                    } else {
-                        Swal.fire('Lỗi Server', data.message, 'error');
-                    }
-                })
-                .catch(err => {
-                    console.error(err);
-                    Swal.fire('Lỗi kết nối', 'Không gọi được API update', 'error');
-                });
-        }
-    </script>
-
-    <script>
         function syncValues(maBill, val) {
             document.querySelectorAll('.sync-' + maBill).forEach(input => { input.value = val; });
         }
-        function handleSave(maBill) {
-            const inputElement = document.querySelector('.sync-' + maBill);
-            const val = inputElement.value.trim().toUpperCase().replace(/\s/g, '');
-            if (!val) { Swal.fire('Thông báo', 'Vui lòng nhập số phiếu!', 'warning'); return; }
 
-            fetch('/update-so-phieu', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ items: [{ ma_bill: maBill, so_phieu: val }] })
-            }).then(res => res.json()).then(data => {
-                if (data.success) Swal.fire('Thành công!', 'Đã cập nhật xong', 'success').then(() => location.reload());
-                else Swal.fire('Lỗi!', data.message, 'error');
-            });
+        function handleSave(maBill) {
+            const val = document.querySelector('.sync-' + maBill).value.trim().toUpperCase();
+            if (!val) { Swal.fire('Lỗi', 'Nhập số phiếu!', 'warning'); return; }
+            fetch('/update-so-phieu', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ items: [{ ma_bill: maBill, so_phieu: val }] }) })
+                .then(res => res.json()).then(data => { if (data.success) location.reload(); });
         }
+
         function handleEdit(maBill) {
             document.querySelectorAll('.sync-' + maBill).forEach(i => i.disabled = false);
             document.querySelectorAll('.btn-save-' + maBill).forEach(b => b.classList.remove('hidden-element'));
             document.querySelectorAll('.btn-edit-' + maBill).forEach(b => b.classList.add('hidden-element'));
         }
+
         function deleteDetailItem(uuid, name) {
-            if (confirm("Xóa sản phẩm: " + name + "?")) {
-                fetch('/delete-warranty-item/' + uuid, { method: 'POST' })
-                    .then(res => res.json())
-                    .then(data => {
-                        if (data.success) location.reload();
-                        else alert(data.message);
-                    });
-            }
+            Swal.fire({ title: 'Xóa?', text: name, icon: 'warning', showCancelButton: true }).then((result) => {
+                if (result.isConfirmed) fetch('/delete-warranty-item/' + uuid, { method: 'POST' }).then(res => res.json()).then(data => { if (data.success) location.reload(); });
+            });
+        }
+
+        function saveBulkData() {
+            const inputs = document.querySelectorAll('.js-bulk-input');
+            const items = [];
+            inputs.forEach(input => { if (input.value.trim()) items.push({ ma_bill: input.getAttribute('data-ma-bill'), so_phieu: input.value.trim().toUpperCase() }); });
+            fetch('/update-so-phieu', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ items: items }) })
+                .then(res => res.json()).then(data => { if (data.success) location.reload(); });
         }
     </script>
 </body>

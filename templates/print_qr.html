@@ -1,87 +1,118 @@
 <!DOCTYPE html>
-<html>
+<html lang="vi">
 
 <head>
+    <meta charset="UTF-8">
+    <title>In Tem QR</title>
     <style>
-        /* Thiết lập chung cho trang in */
+        /* =========================================
+           1. CÀI ĐẶT RIÊNG CHO MÁY IN TEM NHÃN
+           ========================================= */
+        @page {
+            /* Cập nhật khổ giấy máy in 15x8mm */
+            size: 15mm 8mm;
+            margin: 0mm !important;
+        }
+
         @media print {
-            body {
-                margin: 10mm;
+
+            body,
+            html {
+                margin: 0 !important;
+                padding: 0 !important;
+                background-color: white;
+            }
+
+            .qr-container {
+                display: block !important;
+            }
+
+            .qr-item {
+                /* Ép chính xác từng thẻ div bằng đúng khổ tem mới */
+                width: 15mm !important;
+                height: 8mm !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                border: none !important;
+                box-shadow: none !important;
+                page-break-after: always;
+                overflow: hidden;
+            }
+
+            .qr-item img {
+                width: 15mm !important;
+                height: 8mm !important;
+                object-fit: contain !important;
+                margin: 0 !important;
+                display: block;
             }
 
             .no-print {
                 display: none !important;
-                /* Quan trọng: Ẩn khi in */
             }
         }
 
-        body {
-            font-family: 'Segoe UI', Arial, sans-serif;
-            background-color: #f4f4f4;
-            margin: 20px;
-        }
+        /* =========================================
+           2. GIAO DIỆN HIỂN THỊ TRÊN MÀN HÌNH WEB
+           ========================================= */
+        @media screen {
+            body {
+                font-family: 'Segoe UI', Arial, sans-serif;
+                background-color: #f4f4f4;
+                margin: 20px;
+            }
 
-        /* Container chính dùng Flexbox */
-        .qr-container {
-            display: flex;
-            flex-wrap: wrap;
-            /* Cho phép nhảy hàng */
-            justify-content: center;
-            /* Căn giữa các item */
-            gap: 20px;
-            /* Khoảng cách giữa các mã QR */
-        }
+            .qr-container {
+                display: flex;
+                flex-wrap: wrap;
+                justify-content: center;
+                gap: 20px;
+            }
 
-        /* Từng khung bao quanh QR */
-        .qr-item {
-            background: white;
-            padding: 15px;
-            border: 1px solid #ddd;
-            border-radius: 8px;
-            text-align: center;
-            page-break-inside: avoid;
-            /* Tránh bị cắt đôi khi in */
-            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
-            width: 220px;
-            /* Cố định chiều rộng khung */
-        }
+            .qr-item {
+                background: white;
+                padding: 15px;
+                border: 1px solid #ddd;
+                border-radius: 8px;
+                text-align: center;
+                box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+            }
 
-        .qr-item img {
-            width: 200px;
-            height: 200px;
-            display: block;
-            margin: 0 auto;
-        }
+            .qr-item img {
+                /* Kích thước hiển thị to trên màn hình (theo đúng tỷ lệ chuẩn DPI máy in: 177x94px) */
+                width: 177px;
+                height: 94px;
+                display: block;
+                margin: 0 auto;
+                border: 1px solid #eee;
+            }
 
-        .qr-label {
-            margin-top: 10px;
-            font-size: 14px;
-            font-weight: bold;
-            color: #333;
-            word-break: break-all;
-            /* Tránh tràn chữ nếu ID quá dài */
+            .qr-label {
+                margin-top: 10px;
+                font-size: 14px;
+                font-weight: bold;
+                color: #333;
+                word-break: break-all;
+            }
         }
     </style>
 </head>
+
 <link rel="stylesheet" href="{{ url_for('static', filename='vendor/sweetalert2.min.css') }}">
 <script src="{{ url_for('static', filename='vendor/sweetalert2.all.min.js') }}"></script>
-
 <script src="{{ url_for('static', filename='js/global_modal.js') }}"></script>
 
 <body onload="window.print()">
-
     <div class="qr-container">
         {% for item in qrs %}
         <div class="qr-item">
-            <img src="{{ url_for('static', filename='qr/' + item.uuid + '.png') }}">
-
+            <img src="{{ url_for('static', filename='qr/' + item.uuid + '.png') }}" alt="QR Code">
             <div class="qr-label no-print">
                 Mã: {{ item.uuid }}
             </div>
         </div>
         {% endfor %}
     </div>
-
 </body>
 
 </html>

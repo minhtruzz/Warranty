@@ -3,13 +3,14 @@
 
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Thông Tin Bảo Hành</title>
     <link rel="icon" type="image/png" href="{{ url_for('static', filename='favicon.png') }}">
     <style>
         body {
             font-family: Arial, sans-serif;
             background: #f5f6fa;
-            padding: 30px;
+            padding: 20px;
         }
 
         .box {
@@ -25,6 +26,7 @@
             text-align: center;
             color: #2f3640;
             margin-bottom: 20px;
+            font-size: 20px;
         }
 
         .product-img {
@@ -33,23 +35,27 @@
         }
 
         .product-img img {
-            max-width: 100%;
+            max-width: 150px;
             border-radius: 10px;
         }
 
         .item {
             margin: 12px 0;
             font-size: 16px;
+            border-bottom: 1px solid #f8f9fa;
+            padding-bottom: 8px;
         }
 
         .label {
             font-weight: bold;
             color: #555;
+            display: inline-block;
+            width: 130px;
         }
 
         .status {
             margin-top: 20px;
-            padding: 12px;
+            padding: 15px;
             border-radius: 8px;
             text-align: center;
             font-weight: bold;
@@ -74,32 +80,92 @@
             text-align: center;
             margin-top: 20px;
             font-weight: bold;
+            color: #2f3640;
         }
 
         footer {
-            position: static;
             text-align: center;
-            padding: 10px 0;
+            padding: 20px 0;
             color: #ccc;
-            font-size: 15px;
+            font-size: 14px;
+            margin-top: 30px;
+        }
+
+        .btn-activate {
+            background-color: #4361ee;
+            color: white;
+            border: none;
+            padding: 14px;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            margin-top: 10px;
             width: 100%;
-            margin-top: 80px;
-            letter-spacing: 0.5px;
+            transition: 0.3s;
+        }
+
+        .btn-activate:hover {
+            background-color: #3651d4;
+        }
+
+        .btn-activate:disabled {
+            background-color: #a0b0f5;
+            cursor: not-allowed;
+        }
+
+        /* Nút dành cho Admin khi tiếp nhận bảo hành */
+        .btn-warning {
+            background-color: #f39c12;
+        }
+
+        .btn-warning:hover {
+            background-color: #d68910;
+        }
+
+        .box {
+            position: relative;
+            /* Thêm dòng này vào class .box hiện tại nếu chưa có */
+        }
+
+        .btn-print-top {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background-color: #4b6584;
+            color: white;
+            text-decoration: none;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: bold;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            transition: 0.3s;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        }
+
+        .btn-print-top:hover {
+            background-color: #384b63;
         }
     </style>
 </head>
+
 <link rel="stylesheet" href="{{ url_for('static', filename='vendor/sweetalert2.min.css') }}">
 <script src="{{ url_for('static', filename='vendor/sweetalert2.all.min.js') }}"></script>
-
-<script src="{{ url_for('static', filename='js/global_modal.js') }}"></script>
 
 <body>
 
     <div class="box">
         <h2>THÔNG TIN BẢO HÀNH</h2>
-
+        {% if current_user.is_authenticated and current_user.role == 'admin' %}
+        <a href="/single_qr/{{ product.uuid }}" target="_blank" class="btn-print-top">
+            <i class="fas fa-print"></i> Print
+        </a>
+        {% endif %}
         <div class="product-img">
-            <img src="/static/logo/tinthanh.png" width="150">
+            <img src="/static/logo/tinthanh.png" alt="Logo">
         </div>
 
         <div class="item">
@@ -109,56 +175,207 @@
             <span class="label">Số Điện Thoại:</span> {{ product.customer_phone }}
         </div>
         <div class="item">
+            <span class="label">Mã Đơn:</span> {{ product.ma_bill }}
+        </div>
+        <div class="item">
+            <span class="label">Số Phiếu:</span> {{ product.so_phieu }}
+        </div>
+        <div class="item">
             <span class="label">Sản phẩm:</span> {{ product.product_name }}
         </div>
 
         <div class="item">
-            <span class="label">Ngày kích hoạt:</span>
-            {{ activated_date_str }}
+            <span class="label">Ngày xuất bán:</span>
+            <span>{{ created_date_str }}</span>
         </div>
+
+        <!-- <div class="item">
+            <span class="label">Ngày kích hoạt:</span>
+            <span id="txt-activated-date">
+                {% if product.activated_at %}
+                {{ product.activated_at.strftime('%d/%m/%Y') }}
+                {% else %}
+                <span style="color: #c2410c; font-style: italic;">Chưa kích hoạt</span>
+                {% endif %}
+            </span>
+        </div> -->
 
         <div class="item">
             <span class="label">Hết hạn:</span>
-            {{ end_date_str }}
+            <span id="txt-end-date">
+                {{ end_date_str }}
+            </span>
         </div>
 
-        {% if remaining_days > 0 %}
-        <div class="status green">
-            🟢 Còn {{ remaining_days }} ngày bảo hành
+        <div class="item">
+            <span class="label">Đã bảo hành:</span>
+            <span style="font-weight: bold; color: #4361ee;">{{ warranty_count }} lần</span>
         </div>
-        {% elif remaining_days == 0 %}
-        <div class="status orange">
-            🟡 Hết hạn hôm nay
-        </div>
-        {% else %}
-        <div class="status red">
-            🔴 Đã hết hạn bảo hành
+        {% if current_user.is_authenticated and current_user.role == 'admin' %}
+        <div class="item" style="border-bottom: none; text-align: center;">
+            <button class="btn-activate btn-warning"
+                onclick="claimWarranty('{{ product.uuid }}', {{ warranty_count + 1 }}, {{ 'true' if product.activated_at else 'false' }})">
+                🛠 TIẾP NHẬN BẢO HÀNH LẦN {{ warranty_count + 1 }}
+            </button>
         </div>
         {% endif %}
 
-        <div class="description">Cảm ơn quý khách</div>
+        <div id="status-container">
+            {% if remaining_days > 0 %}
+            <div class="status green">🟢 Còn {{ remaining_days }} ngày bảo hành</div>
+            {% elif remaining_days == 0 %}
+            <div class="status orange">🟡 Hết hạn hôm nay</div>
+            {% else %}
+            <div class="status red">🔴 Đã hết hạn bảo hành</div>
+            {% endif %}
+
+            {% if not product.activated_at %}
+            <div class="status orange" style="margin-top: 15px;">
+                <p style="margin: 0 0 10px 0;">🟡 Sản phẩm chưa được kích hoạt</p>
+                <button id="btn-activate-{{ product.uuid }}" class="btn-activate"
+                    onclick="activateWarranty('{{ product.uuid }}')">
+                    KÍCH HOẠT CHO KHÁCH LẺ
+                </button>
+            </div>
+            {% else %}
+            <div class="status green" style="margin-top: 15px;">
+                <p style="margin: 0;">✅ Đã kích hoạt: {{ product.activated_at.strftime('%d/%m/%Y') }}</p>
+            </div>
+            {% endif %}
+        </div>
+
+        <div class="description">Cảm ơn quý khách đã tin dùng!</div>
     </div>
+
+    {% if current_user.role == 'admin' %}
+    {% if claim_history_list %}
     <div class="box" style="margin-top: 20px;">
-        <h2 style="text-align: center; text-transform: uppercase;">Thông tin sản phẩm bảo hành</h2>
+        <h2 style="text-align: center; text-transform: uppercase; font-size: 16px;">Lịch sử bảo hành</h2>
+        <div style="padding: 10px; border-top: 1px solid #eee;">
+            {% for hist in claim_history_list %}
+            <div
+                style="display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px dashed #ddd; font-size: 15px;">
+                <span style="font-weight: bold; color: #4361ee;">Lần {{ hist.lan }}</span>
+                <span style="color: #64748b;">📅 {{ hist.ngay }}</span>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+    {% endif %}
 
-        <div style="padding: 15px; border-top: 1px solid #eee;">
-            <p style="font-size: 16px; color: #333;">
-                <strong>Chế độ bảo hành riêng cho sản phẩm này:</strong>
-            </p>
-
-            <div style="background: #fff9c4; padding: 15px; border-left: 5px solid #fbc02d; border-radius: 4px;">
+    <div class="box" style="margin-top: 20px;">
+        <h2 style="text-align: center; text-transform: uppercase; font-size: 16px;">Ghi chú bảo hành</h2>
+        <div style="padding: 10px; border-top: 1px solid #eee;">
+            <div
+                style="background: #fff9c4; padding: 15px; border-left: 5px solid #fbc02d; border-radius: 4px; font-size: 14px; line-height: 1.5;">
                 {% if product.info_warranty %}
                 {{ product.info_warranty }}
                 {% else %}
                 Sản phẩm được bảo hành chính hãng theo tiêu chuẩn của nhà sản xuất.
                 {% endif %}
             </div>
-
-            <p style="margin-top: 15px; font-style: italic; font-size: 13px; color: #666;">
-                * Lưu ý: Vui lòng giữ tem bảo hành nguyên vẹn để được hỗ trợ tốt nhất.
+            <p style="margin-top: 15px; font-style: italic; font-size: 12px; color: #888;">
+                * Lưu ý: Vui lòng giữ tem bảo hành nguyên vẹn để được hỗ trợ.
             </p>
         </div>
     </div>
+
+    <script>
+        // Kích hoạt cho khách lẻ
+        function activateWarranty(uuid) {
+            Swal.fire({
+                title: 'Kích hoạt bảo hành?',
+                text: "Thời gian bảo hành cho khách lẻ sẽ bắt đầu tính từ hôm nay!",
+                icon: 'question',
+                showCancelButton: true,
+                confirmButtonColor: '#4361ee',
+                cancelButtonColor: '#6e7881',
+                confirmButtonText: 'Đồng ý kích hoạt',
+                cancelButtonText: 'Hủy'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    const btn = document.getElementById('btn-activate-' + uuid);
+                    if (btn) {
+                        btn.disabled = true;
+                        btn.innerText = 'Đang xử lý...';
+                    }
+
+                    fetch(`/api/activate-warranty/${uuid}`, { method: 'POST' })
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.success) {
+                                Swal.fire({
+                                    title: 'Thành công!',
+                                    text: 'Đã kích hoạt bảo hành cho sản phẩm.',
+                                    icon: 'success'
+                                }).then(() => {
+                                    location.reload();
+                                });
+                            } else {
+                                Swal.fire('Lỗi', data.message || 'Không thể kích hoạt', 'error');
+                                if (btn) { btn.disabled = false; btn.innerText = 'Kích hoạt ngay'; }
+                            }
+                        })
+                        .catch(err => {
+                            Swal.fire('Lỗi', 'Không thể kết nối máy chủ!', 'error');
+                            if (btn) { btn.disabled = false; btn.innerText = 'Kích hoạt ngay'; }
+                        });
+                }
+            })
+        }
+
+        // Tiếp nhận bảo hành (Lưu Lịch sử)
+        function claimWarranty(uuid, nextTime, isActivated) {
+            let messageText = "";
+
+            if (!isActivated) {
+                messageText = "⚠️ ĐÂY LÀ HÀNG LƯU KHO: Hệ thống sẽ GHI NHẬN VÀO LỊCH SỬ bảo hành, nhưng KHÔNG ĐỤNG TỚI THỜI GIAN của khách lẻ (để dành sau này kích hoạt).";
+            } else if (nextTime === 1) {
+                messageText = "ĐÂY LÀ BẢO HÀNH LẦN 1: Hệ thống sẽ LƯU LỊCH SỬ và TỰ ĐỘNG RESET LẠI NGUYÊN MỚI hạn 12 tháng bắt đầu từ hôm nay.";
+            } else {
+                messageText = `ĐÂY LÀ BẢO HÀNH LẦN ${nextTime}: Thời gian bảo hành GIỮ NGUYÊN (lấy ngày của Lần 1 trừ đi), hệ thống sẽ LƯU LỊCH SỬ vào danh sách.`;
+            }
+
+            Swal.fire({
+                title: `Xác nhận bảo hành Lần ${nextTime}?`,
+                text: messageText,
+                icon: 'info',
+                showCancelButton: true,
+                confirmButtonColor: '#f39c12',
+                cancelButtonColor: '#d33',
+                confirmButtonText: `Tiếp nhận Lần ${nextTime}`,
+                cancelButtonText: 'Hủy'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    Swal.fire({
+                        title: 'Đang xử lý...',
+                        allowOutsideClick: false,
+                        didOpen: () => { Swal.showLoading(); }
+                    });
+
+                    fetch(`/api/claim-warranty/${uuid}`, { method: 'POST' })
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.success) {
+                                Swal.fire({
+                                    title: 'Thành công!',
+                                    text: data.message || 'Đã tiếp nhận bảo hành.',
+                                    icon: 'success'
+                                }).then(() => {
+                                    location.reload();
+                                });
+                            } else {
+                                Swal.fire('Lỗi', data.message || 'Không thể tiếp nhận bảo hành', 'error');
+                            }
+                        })
+                        .catch(err => {
+                            Swal.fire('Lỗi', 'Không thể kết nối máy chủ!', 'error');
+                        });
+                }
+            })
+        }
+    </script>
 </body>
 <footer>
     &copy; {{ now.year }}, Design by minhtruzz.dev@gmail.com

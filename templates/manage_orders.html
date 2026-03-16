@@ -10,7 +10,6 @@
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
     <style>
-        /* --- GIỮ NGUYÊN CSS CŨ CỦA BẠN (KHÔNG ĐỔI) --- */
         :root {
             --primary: #4361ee;
             --secondary: #3f37c9;
@@ -59,6 +58,8 @@
             padding: 10px 15px;
             border-radius: 8px;
             box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+            border: none;
+            cursor: pointer;
         }
 
         .btn-back:hover {
@@ -78,6 +79,15 @@
             padding: 25px;
             border-bottom: 1px solid #f1f5f9;
             background: white;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .card-header-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
         }
 
         .card-header h2 {
@@ -128,9 +138,10 @@
             padding: 5px 10px;
             border-radius: 6px;
             font-size: 0.9rem;
+            white-space: nowrap;
+            display: inline-block;
         }
 
-        /* Button Styles */
         .btn-action {
             border: none;
             cursor: pointer;
@@ -307,7 +318,6 @@
             border: 1px solid #cbd5e1;
             border-radius: 8px;
             font-size: 1rem;
-            transition: 0.2s;
             box-sizing: border-box;
         }
 
@@ -315,13 +325,6 @@
             outline: none;
             border-color: var(--primary);
             box-shadow: 0 0 0 3px rgba(67, 97, 238, 0.15);
-        }
-
-        .form-control[readonly] {
-            background-color: #f1f5f9;
-            color: #64748b;
-            border-color: #e2e8f0;
-            cursor: default;
         }
 
         .modal-footer {
@@ -342,13 +345,11 @@
             border-radius: 8px;
             cursor: pointer;
             font-weight: 600;
-            font-size: 0.95rem;
-            transition: 0.2s;
         }
 
-        .btn-save:hover {
-            background: var(--secondary);
-            transform: translateY(-1px);
+        .btn-save:disabled {
+            background: #a0aec0;
+            cursor: not-allowed;
         }
 
         .btn-cancel {
@@ -359,21 +360,6 @@
             border-radius: 8px;
             cursor: pointer;
             font-weight: 600;
-            font-size: 0.95rem;
-            transition: 0.2s;
-        }
-
-        .btn-cancel:hover {
-            background: #f1f5f9;
-            color: #334155;
-        }
-
-        footer {
-            text-align: center;
-            margin-top: 30px;
-            color: #94a3b8;
-            font-size: 0.85rem;
-            padding-bottom: 10px;
         }
 
         .detail-table {
@@ -395,10 +381,6 @@
             padding: 12px;
             border-bottom: 1px solid #eee;
             color: #334155;
-        }
-
-        .detail-table tr:last-child td {
-            border-bottom: none;
         }
 
         .btn-icon {
@@ -430,6 +412,26 @@
             border-radius: 8px;
             border: 1px dashed #cbd5e1;
         }
+
+        /* Custom checkbox size */
+        input[type="checkbox"] {
+            transform: scale(1.2);
+            cursor: pointer;
+        }
+
+        /* CSS cho cột Người Tạo */
+        .creator-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: #f1f5f9;
+            color: #475569;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            border: 1px solid #e2e8f0;
+        }
     </style>
 </head>
 
@@ -440,40 +442,74 @@
         </div>
 
         <div class="card">
-            <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
-                <h2><i class="fas fa-file-invoice" style="color: var(--primary);"></i> Quản lý Đơn hàng</h2>
+            <div class="card-header">
+                <div class="card-header-top">
+                    <h2><i class="fas fa-file-invoice" style="color: var(--primary);"></i> Quản lý Đơn hàng</h2>
+                    <div style="display: flex; gap: 10px; align-items: center;">
+                        <button id="btnDeleteSelected" class="btn-back"
+                            style="display: none; background-color: var(--danger); color: white;">
+                            <i class="fas fa-trash-alt"></i> Xóa đã chọn (<span id="selectedCount">0</span>)
+                        </button>
 
-                <a href="{{ url_for('export_excel') }}" class="btn-back"
-                    style="background-color: #2ecc71; color: white; border: none;">
-                    <i class="fas fa-file-excel"></i> Export
-                </a>
+                        <a href="{{ url_for('export_excel') }}" class="btn-back"
+                            style="background-color: #2ecc71; color: white;">
+                            <i class="fas fa-file-excel"></i> Export
+                        </a>
+                    </div>
+                </div>
+
+                <form method="GET" action="{{ url_for('manage_orders') }}"
+                    style="display: flex; gap: 10px; align-items: center; width: 100%;">
+                    <input type="text" name="search" value="{{ search }}" class="form-control"
+                        placeholder="Tìm kiếm mã, tên, SĐT, địa chỉ, người tạo..." style="flex: 1; padding: 10px 12px;">
+                    <select name="per_page" class="form-control" style="width: auto; padding: 10px 12px;"
+                        onchange="this.form.submit()">
+                        <option value="12" {% if per_page==12 %}selected{% endif %}>12 / trang</option>
+                        <option value="50" {% if per_page==50 %}selected{% endif %}>50 / trang</option>
+                        <option value="100" {% if per_page==100 %}selected{% endif %}>100 / trang</option>
+                    </select>
+                    <button type="submit" class="btn-save" style="padding: 10px 15px;"><i class="fas fa-search"></i> Tìm
+                        kiếm</button>
+                </form>
             </div>
 
             <div class="table-wrapper">
                 <table>
                     <thead>
                         <tr>
+                            <th style="width: 40px;"><input type="checkbox" id="selectAll"></th>
                             <th>Mã đơn</th>
                             <th>Khách hàng</th>
                             <th>SĐT</th>
                             <th>Địa chỉ</th>
                             <th>Ngày tạo</th>
+                            <th>Người tạo</th>
                             <th style="text-align: right;">Thao tác</th>
                         </tr>
                     </thead>
                     <tbody>
                         {% for b in bills %}
                         <tr>
-                            <td style="width: 100px;"><span class="bill-code">{{ b.bill_code }}</span></td>
+                            <td><input type="checkbox" class="bill-checkbox" value="{{ b.id }}"></td>
+                            <td style="width: 100px; white-space: nowrap;"><span class="bill-code">{{ b.bill_code
+                                    }}</span></td>
                             <td>
                                 <div style="font-weight: 600; color: #334155;">{{ b.customer_name }}</div>
                             </td>
                             <td>{{ b.customer_phone }}</td>
-                            <td style="max-width: 200px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;"
-                                title="{{ b.customer_address }}">
-                                {{ b.customer_address }}
+                            <td style="max-width: 150px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;"
+                                title="{{ b.customer_address if b.customer_address else '' }}">
+                                {{ b.customer_address if b.customer_address else '' }}
                             </td>
                             <td style="color: #64748b; font-size: 0.85rem;">{{ b.created_at }}</td>
+
+                            <td>
+                                <span class="creator-badge">
+                                    <i class="fas fa-user-circle" style="color: var(--primary);"></i>
+                                    {{ b.created_by if b.created_by else 'admin' }}
+                                </span>
+                            </td>
+
                             <td style="text-align: right; white-space: nowrap;">
                                 <button type="button" class="btn-action btn-detail"
                                     onclick="openDetailModal('{{ b.bill_code }}', '{{ b.customer_name }}')">
@@ -481,9 +517,11 @@
                                 </button>
 
                                 <button type="button" class="btn-action btn-edit" data-id="{{ b.id }}"
-                                    data-code="{{ b.bill_code }}" data-name="{{ b.customer_name }}"
-                                    data-phone="{{ b.customer_phone or '' }}"
-                                    data-address="{{ b.customer_address or '' }}" data-created="{{ b.created_at }}"
+                                    data-code="{{ b.bill_code }}"
+                                    data-name="{{ b.customer_name if b.customer_name else '' }}"
+                                    data-phone="{{ b.customer_phone if b.customer_phone else '' }}"
+                                    data-address="{{ b.customer_address if b.customer_address else '' }}"
+                                    data-created="{{ b.created_at if b.created_at else '' }}"
                                     onclick="openEditModal(this)">
                                     <i class="fas fa-pen"></i>
                                 </button>
@@ -499,7 +537,7 @@
                         </tr>
                         {% else %}
                         <tr>
-                            <td colspan="6"
+                            <td colspan="8"
                                 style="text-align: center; padding: 40px; color: #94a3b8; font-style: italic;">
                                 <i class="fas fa-box-open"
                                     style="font-size: 2rem; margin-bottom: 10px; display: block;"></i>
@@ -513,10 +551,19 @@
 
             {% if total_pages > 1 %}
             <div class="pagination-wrapper">
-                <a href="{{ url_for(request.endpoint, page=current_page-1) }}"
+                <a href="{{ url_for('manage_orders', page=current_page-1, per_page=per_page, search=search) }}"
                     class="page-btn {% if current_page == 1 %}page-disabled{% endif %}">« Trước</a>
-                <span class="page-current">{{ current_page }} / {{ total_pages }}</span>
-                <a href="{{ url_for(request.endpoint, page=current_page+1) }}"
+
+                {% for p in pagination_pages %}
+                {% if p == '...' %}
+                <span class="page-btn" style="pointer-events: none; border: none; background: transparent;">...</span>
+                {% else %}
+                <a href="{{ url_for('manage_orders', page=p, per_page=per_page, search=search) }}"
+                    class="page-btn {% if p == current_page %}page-current{% endif %}">{{ p }}</a>
+                {% endif %}
+                {% endfor %}
+
+                <a href="{{ url_for('manage_orders', page=current_page+1, per_page=per_page, search=search) }}"
                     class="page-btn {% if current_page == total_pages %}page-disabled{% endif %}">Sau »</a>
             </div>
             {% endif %}
@@ -531,7 +578,7 @@
                 <h3><i class="fas fa-edit"></i> Cập nhật Đơn hàng</h3>
                 <span class="close-modal" onclick="closeModal('editOrderModal')"><i class="fas fa-times"></i></span>
             </div>
-            <form id="editOrderForm" action="" method="POST">
+            <form id="editOrderForm" onsubmit="submitEditForm(event)">
                 <div class="modal-body">
                     <div class="form-group">
                         <label>Mã đơn hàng</label>
@@ -551,14 +598,13 @@
                         <input type="text" id="editCustomerPhone" name="customer_phone" class="form-control" required>
                     </div>
                     <div class="form-group">
-                        <label>Địa chỉ nhận hàng <span style="color: red;">*</span></label>
-                        <input type="text" id="editCustomerAddress" name="customer_address" class="form-control"
-                            required>
+                        <label>Địa chỉ nhận hàng</label>
+                        <input type="text" id="editCustomerAddress" name="customer_address" class="form-control">
                     </div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn-cancel" onclick="closeModal('editOrderModal')">Đóng</button>
-                    <button type="submit" class="btn-save">Lưu thay đổi</button>
+                    <button type="submit" class="btn-save" id="btnSaveOrder">Lưu thay đổi</button>
                 </div>
             </form>
         </div>
@@ -567,17 +613,14 @@
     <div id="detailModal" class="modal-overlay">
         <div class="modal-box modal-lg">
             <div class="modal-header">
-                <h3><i class="fas fa-receipt" style="color: var(--primary);"></i> Chi tiết đơn hàng:
-                    <span id="detailCustomerName" style="color: var(--primary); font-weight: bold;">...</span>
-                </h3>
+                <h3><i class="fas fa-receipt" style="color: var(--primary);"></i> Chi tiết đơn hàng: <span
+                        id="detailCustomerName" style="color: var(--primary); font-weight: bold;">...</span></h3>
                 <span class="close-modal" onclick="closeModal('detailModal')"><i class="fas fa-times"></i></span>
             </div>
-
             <div class="modal-body">
                 <div style="margin-bottom: 10px; font-size: 0.9rem; color: #64748b;">
                     Mã đơn: <span id="detailBillCodeDisplay" style="font-weight: bold; color: #333;">...</span>
                 </div>
-
                 <div style="max-height: 500px; overflow-y: auto;">
                     <table class="detail-table">
                         <thead>
@@ -587,8 +630,7 @@
                                 <th style="text-align:right;">Hành động</th>
                             </tr>
                         </thead>
-                        <tbody id="detailTableBody">
-                        </tbody>
+                        <tbody id="detailTableBody"></tbody>
                     </table>
                     <div id="loadingText" style="text-align: center; padding: 20px; color: #999; display: none;">
                         <i class="fas fa-spinner fa-spin"></i> Đang tải dữ liệu...
@@ -602,35 +644,60 @@
     </div>
 
     <script>
-        // --- KHAI BÁO BIẾN TOÀN CỤC ---
         let currentBillCode = '';
 
-        // --- 1. MODAL SỬA ĐƠN HÀNG (GIỮ NGUYÊN CŨ) ---
+        // --- HÀM MỚI: GỬI NGẦM FORM EDIT VÀ KHÔNG RELOAD SANG TRANG ADMIN ---
+        async function submitEditForm(event) {
+            event.preventDefault();
+
+            const form = document.getElementById('editOrderForm');
+            const btnSave = document.getElementById('btnSaveOrder');
+
+            const url = form.action;
+            const formData = new FormData(form);
+
+            btnSave.disabled = true;
+            btnSave.innerText = 'Đang lưu...';
+
+            try {
+                const response = await fetch(url, {
+                    method: 'POST',
+                    body: formData,
+                    redirect: 'follow'
+                });
+
+                closeModal('editOrderModal');
+
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Thành công',
+                    text: 'Đã cập nhật thông tin đơn hàng!',
+                    timer: 1500,
+                    showConfirmButton: false
+                }).then(() => {
+                    window.location.href = "{{ url_for('manage_orders', page=1, per_page=per_page, search=search) }}".replace(/&amp;/g, '&');
+                });
+            } catch (error) {
+                console.error('Lỗi khi lưu:', error);
+                Swal.fire('Lỗi', 'Không thể lưu dữ liệu, vui lòng kiểm tra kết nối!', 'error');
+            } finally {
+                btnSave.disabled = false;
+                btnSave.innerText = 'Lưu thay đổi';
+            }
+        }
+
         function openEditModal(button) {
-            const id = button.dataset.id;
-            const code = button.dataset.code;
-            const name = button.dataset.name;
-            const phone = button.dataset.phone;
-            const address = button.dataset.address;
-            const created = button.dataset.created;
+            const d = button.dataset;
+            document.getElementById('displayBillCode').value = d.code;
+            document.getElementById('editCustomerName').value = d.name;
+            document.getElementById('editCustomerPhone').value = d.phone;
+            document.getElementById('editCustomerAddress').value = d.address;
 
-            document.getElementById('displayBillCode').value = code;
-            document.getElementById('editCustomerName').value = name;
-            document.getElementById('editCustomerPhone').value = phone;
-            document.getElementById('editCustomerAddress').value = address;
-
-            if (created && created != 'None') {
-                // Xử lý ngày tháng tránh lỗi
-                try {
-                    const formattedDate = created.replace(' ', 'T').substring(0, 16);
-                    document.getElementById('editCreatedAt').value = formattedDate;
-                } catch (e) { console.log("Lỗi ngày tháng:", e); }
+            if (d.created && d.created !== 'None') {
+                try { document.getElementById('editCreatedAt').value = d.created.replace(' ', 'T').substring(0, 16); } catch (e) { }
             }
 
-            // Cập nhật Action Form
-            const templateAction = "/edit_order/0";
-            document.getElementById('editOrderForm').action = templateAction.replace('0', id);
-
+            document.getElementById('editOrderForm').action = "/edit_order/" + d.id;
             document.getElementById('editOrderModal').classList.add('active');
         }
 
@@ -638,180 +705,134 @@
             document.getElementById(modalId).classList.remove('active');
         }
 
-        // --- 2. MODAL CHI TIẾT SẢN PHẨM (ĐÃ SỬA LOGIC) ---
-
         function openDetailModal(billCode, customerName) {
             currentBillCode = billCode;
-
-            // Cập nhật tiêu đề modal
             document.getElementById('detailCustomerName').innerText = customerName;
             document.getElementById('detailBillCodeDisplay').innerText = billCode;
-
             document.getElementById('detailModal').classList.add('active');
-
-            // Gọi hàm tải dữ liệu
             loadItems();
         }
 
-        // Hàm tải danh sách sản phẩm trong modal
         function loadItems() {
             const tbody = document.getElementById('detailTableBody');
             const loader = document.getElementById('loadingText');
+            tbody.innerHTML = ''; loader.style.display = 'block';
 
-            tbody.innerHTML = '';
-            loader.style.display = 'block';
-
-            fetch(`/api/get-items/${currentBillCode}`)
-                .then(res => res.json())
-                .then(data => {
-                    loader.style.display = 'none';
-                    if (data.success && data.items.length > 0) {
-                        data.items.forEach(item => {
-                            const row = `
+            fetch(`/api/get-items/${currentBillCode}`).then(res => res.json()).then(data => {
+                loader.style.display = 'none';
+                if (data.success && data.items.length > 0) {
+                    data.items.forEach(item => {
+                        tbody.innerHTML += `
                             <tr>
-                                <td>
-                                    <div style="font-weight:600;">${item.product_name}</div>
-                                </td>
-                                <td style="color: #666;">
-                                    ${item.so_phieu ? '<span style="background:#f1f5f9; padding:2px 6px; border-radius:4px; font-size:0.85rem;">' + item.so_phieu + '</span>' : '---'}
-                                </td>
+                                <td><div style="font-weight:600;">${item.product_name}</div></td>
+                                <td style="color: #666;">${item.so_phieu ? '<span style="background:#f1f5f9; padding:2px 6px; border-radius:4px;">' + item.so_phieu + '</span>' : '---'}</td>
                                 <td style="text-align: right;">
-                                    <button class="btn-icon text-edit" title="Sửa món này" 
-                                        onclick="apiEditItem(${item.id}, ${item.product_id}, '${item.so_phieu || ''}')">
-                                        <i class="fas fa-edit"></i>
-                                    </button>
-                                    
-                                    <button class="btn-icon text-del" title="Xóa món này" 
-                                        onclick="apiDeleteItem(${item.id})">
-                                        <i class="fas fa-trash"></i>
-                                    </button>
+                                    <button class="btn-icon text-edit" onclick="apiEditItem(${item.id}, ${item.product_id}, '${item.so_phieu || ''}')"><i class="fas fa-edit"></i></button>
+                                    <button class="btn-icon text-del" onclick="apiDeleteItem(${item.id})"><i class="fas fa-trash"></i></button>
                                 </td>
-                            </tr>
-                        `;
-                            tbody.innerHTML += row;
-                        });
-                    } else {
-                        tbody.innerHTML = `<tr><td colspan="3"><div class="empty-state">Khách này chưa có sản phẩm nào.</div></td></tr>`;
-                    }
-                })
-                .catch(err => {
-                    console.error(err);
-                    loader.style.display = 'none';
-                    tbody.innerHTML = '<tr><td colspan="3" style="text-align:center; color:red;">Lỗi kết nối server!</td></tr>';
-                });
+                            </tr>`;
+                    });
+                } else { tbody.innerHTML = '<tr><td colspan="3"><div class="empty-state">Chưa có sản phẩm.</div></td></tr>'; }
+            });
         }
 
-        // Hàm xóa sản phẩm (Giữ nguyên)
-        function apiDeleteItem(id) {
+        async function apiEditItem(itemId, currentProductId, currentNote) {
+            const response = await fetch('/api/all-products');
+            const data = await response.json();
+            if (!data.success) return;
+
+            let options = data.products.map(p => `<option value="${p.id}" ${p.id == currentProductId ? 'selected' : ''}>${p.product_name}</option>`).join('');
+
             Swal.fire({
-                title: 'Xóa sản phẩm này?',
-                text: "Hành động này không thể hoàn tác!",
+                title: 'Sửa sản phẩm',
+                html: `<select id="swal-product-select" class="swal2-input">${options}</select>
+                       <input id="swal-note-input" class="swal2-input" value="${currentNote}">`,
+                preConfirm: () => ({ newProductId: document.getElementById('swal-product-select').value, newNote: document.getElementById('swal-note-input').value })
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    fetch('/api/update-item', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ id: itemId, product_id: result.value.newProductId, so_phieu: result.value.newNote })
+                    }).then(res => res.json()).then(apiRes => {
+                        if (apiRes.success) { loadItems(); Swal.fire('Xong!', '', 'success'); }
+                    });
+                }
+            });
+        }
+
+        function apiDeleteItem(id) {
+            Swal.fire({ title: 'Xóa?', showCancelButton: true }).then(r => {
+                if (r.isConfirmed) {
+                    fetch('/api/delete-item', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id }) })
+                        .then(res => res.json()).then(d => { if (d.success) loadItems(); });
+                }
+            });
+        }
+
+        // --- XÓA NHIỀU ---
+        const selectAllHeader = document.getElementById('selectAll');
+        const checkboxes = document.getElementsByClassName('bill-checkbox');
+        const btnDeleteSelected = document.getElementById('btnDeleteSelected');
+        const selectedCountText = document.getElementById('selectedCount');
+
+        function updateDeleteButton() {
+            const checkedBoxes = document.querySelectorAll('.bill-checkbox:checked');
+            const count = checkedBoxes.length;
+            if (count > 0) {
+                btnDeleteSelected.style.display = 'flex';
+                selectedCountText.innerText = count;
+            } else {
+                btnDeleteSelected.style.display = 'none';
+            }
+        }
+
+        selectAllHeader.addEventListener('change', function () {
+            for (let cb of checkboxes) { cb.checked = this.checked; }
+            updateDeleteButton();
+        });
+
+        document.addEventListener('change', function (e) {
+            if (e.target.classList.contains('bill-checkbox')) {
+                updateDeleteButton();
+                if (!e.target.checked) selectAllHeader.checked = false;
+                else if (document.querySelectorAll('.bill-checkbox:checked').length === checkboxes.length) selectAllHeader.checked = true;
+            }
+        });
+
+        btnDeleteSelected.addEventListener('click', function () {
+            const checkedBoxes = document.querySelectorAll('.bill-checkbox:checked');
+            const idsToDelete = Array.from(checkedBoxes).map(cb => cb.value);
+
+            Swal.fire({
+                title: `Xóa ${idsToDelete.length} đơn hàng?`,
+                text: "Dữ liệu sẽ bị xóa vĩnh viễn!",
                 icon: 'warning',
                 showCancelButton: true,
                 confirmButtonColor: '#ef476f',
-                confirmButtonText: 'Xoá',
+                confirmButtonText: 'Xóa ngay',
                 cancelButtonText: 'Hủy'
             }).then((result) => {
                 if (result.isConfirmed) {
-                    fetch('/api/delete-item', {
+                    fetch('/api/delete-multiple-bills', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ id: id })
+                        body: JSON.stringify({ ids: idsToDelete })
                     })
                         .then(res => res.json())
                         .then(data => {
                             if (data.success) {
-                                loadItems();
-                                Swal.fire('Đã xóa!', 'Sản phẩm đã bị xóa.', 'success');
+                                Swal.fire('Thành công!', 'Đã xóa các đơn.', 'success').then(() => location.reload());
                             } else {
                                 Swal.fire('Lỗi', data.message, 'error');
                             }
                         });
                 }
-            })
-        }
+            });
+        });
 
-        // --- HÀM SỬA SẢN PHẨM MỚI (CÓ DROPDOWN CHỌN TÊN) ---
-        async function apiEditItem(itemId, currentProductId, currentNote) {
-            try {
-                // Bước 1: Gọi API lấy danh sách tất cả sản phẩm
-                const response = await fetch('/api/all-products');
-                const data = await response.json();
-
-                if (!data.success) {
-                    Swal.fire('Lỗi', 'Không thể tải danh sách sản phẩm', 'error');
-                    return;
-                }
-
-                // Bước 2: Tạo HTML cho thẻ Select (Dropdown)
-                let optionsHtml = '';
-                data.products.forEach(p => {
-                    // Nếu ID trùng với sản phẩm hiện tại thì chọn sẵn (selected)
-                    // Lưu ý: Dùng == để so sánh lỏng lẻo (string vs number)
-                    const isSelected = (p.id == currentProductId) ? 'selected' : '';
-                    optionsHtml += `<option value="${p.id}" ${isSelected}>${p.product_name}</option>`;
-                });
-
-                // Bước 3: Hiện SweetAlert với Select Box thay vì Input Text
-                Swal.fire({
-                    title: 'Chỉnh sửa sản phẩm',
-                    html:
-                        `<div style="text-align:left; margin-bottom:5px; font-weight:600; font-size:0.9rem;">Chọn sản phẩm</div>` +
-                        `<select id="swal-product-select" class="swal2-input" style="width: 80%; margin-bottom: 15px; padding: 0 10px;">` +
-                        optionsHtml +
-                        `</select>` +
-
-                        `<div style="text-align:left; margin-bottom:5px; font-weight:600; font-size:0.9rem;">Số phiếu / Ghi chú</div>` +
-                        `<input id="swal-note-input" class="swal2-input" placeholder="Số phiếu" value="${currentNote}" style="margin: 0; width: 80%;">`,
-
-                    focusConfirm: false,
-                    showCancelButton: true,
-                    confirmButtonText: 'Lưu thay đổi',
-                    cancelButtonText: 'Hủy',
-                    preConfirm: () => {
-                        return {
-                            newProductId: document.getElementById('swal-product-select').value,
-                            newNote: document.getElementById('swal-note-input').value
-                        }
-                    }
-                }).then((result) => {
-                    if (result.isConfirmed) {
-                        const { newProductId, newNote } = result.value;
-
-                        // Gọi API Update
-                        fetch('/api/update-item', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({
-                                id: itemId,
-                                product_id: newProductId, // Gửi ID mới
-                                so_phieu: newNote
-                            })
-                        })
-                            .then(res => res.json())
-                            .then(apiRes => {
-                                if (apiRes.success) {
-                                    loadItems(); // Load lại bảng
-                                    Swal.fire('Thành công!', 'Đã cập nhật sản phẩm.', 'success');
-                                } else {
-                                    Swal.fire('Lỗi', apiRes.message, 'error');
-                                }
-                            });
-                    }
-                });
-
-            } catch (error) {
-                console.error(error);
-                Swal.fire('Lỗi', 'Lỗi kết nối server khi tải sản phẩm', 'error');
-            }
-        }
-
-        // Đóng modal khi click ra ngoài
-        window.onclick = function (event) {
-            const modal1 = document.getElementById('editOrderModal');
-            const modal2 = document.getElementById('detailModal');
-            if (event.target === modal1) closeModal('editOrderModal');
-            if (event.target === modal2) closeModal('detailModal');
+        window.onclick = e => {
+            if (e.target.classList.contains('modal-overlay')) closeModal(e.target.id);
         }
     </script>
 </body>
