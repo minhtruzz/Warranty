@@ -20,6 +20,7 @@
             padding: 25px;
             border-radius: 12px;
             box-shadow: 0 5px 15px rgba(0, 0, 0, .1);
+            position: relative;
         }
 
         h2 {
@@ -114,18 +115,13 @@
             cursor: not-allowed;
         }
 
-        /* Nút dành cho Admin khi tiếp nhận bảo hành */
+
         .btn-warning {
             background-color: #f39c12;
         }
 
         .btn-warning:hover {
             background-color: #d68910;
-        }
-
-        .box {
-            position: relative;
-            /* Thêm dòng này vào class .box hiện tại nếu chưa có */
         }
 
         .btn-print-top {
@@ -149,6 +145,26 @@
         .btn-print-top:hover {
             background-color: #384b63;
         }
+
+
+        .product-item-sp {
+            display: flex;
+            align-items: flex-start;
+
+        }
+
+
+        .product-item-sp .label {
+            white-space: nowrap;
+            margin-right: 8px;
+
+        }
+
+
+        .product-value-sp {
+            flex: 1;
+            word-break: break-word;
+        }
     </style>
 </head>
 
@@ -159,11 +175,13 @@
 
     <div class="box">
         <h2>THÔNG TIN BẢO HÀNH</h2>
-        {% if current_user.is_authenticated and current_user.role == 'admin' %}
-        <a href="/single_qr/{{ product.uuid }}" target="_blank" class="btn-print-top">
+
+        {% if current_user.is_authenticated %}
+        <a href="/single_qr/{{ product.uuid }}" class="btn-print-top">
             <i class="fas fa-print"></i> Print
         </a>
         {% endif %}
+
         <div class="product-img">
             <img src="/static/logo/tinthanh.png" alt="Logo">
         </div>
@@ -180,25 +198,15 @@
         <div class="item">
             <span class="label">Số Phiếu:</span> {{ product.so_phieu }}
         </div>
-        <div class="item">
-            <span class="label">Sản phẩm:</span> {{ product.product_name }}
+        <div class="item product-item-sp">
+            <span class="label">Sản phẩm:</span>
+            <span class="product-value-sp">{{ product.product_name }}</span>
         </div>
 
         <div class="item">
             <span class="label">Ngày xuất bán:</span>
-            <span>{{ created_date_str }}</span>
+            <span>{{ update_date_str }}</span>
         </div>
-
-        <!-- <div class="item">
-            <span class="label">Ngày kích hoạt:</span>
-            <span id="txt-activated-date">
-                {% if product.activated_at %}
-                {{ product.activated_at.strftime('%d/%m/%Y') }}
-                {% else %}
-                <span style="color: #c2410c; font-style: italic;">Chưa kích hoạt</span>
-                {% endif %}
-            </span>
-        </div> -->
 
         <div class="item">
             <span class="label">Hết hạn:</span>
@@ -211,7 +219,8 @@
             <span class="label">Đã bảo hành:</span>
             <span style="font-weight: bold; color: #4361ee;">{{ warranty_count }} lần</span>
         </div>
-        {% if current_user.is_authenticated and current_user.role == 'admin' %}
+
+        {% if current_user.is_authenticated %}
         <div class="item" style="border-bottom: none; text-align: center;">
             <button class="btn-activate btn-warning"
                 onclick="claimWarranty('{{ product.uuid }}', {{ warranty_count + 1 }}, {{ 'true' if product.activated_at else 'false' }})">
@@ -221,7 +230,9 @@
         {% endif %}
 
         <div id="status-container">
-            {% if remaining_days > 0 %}
+            {% if product.warranty_months|int == 0 %}
+            <div class="status red">❌ KHÔNG BẢO HÀNH</div>
+            {% elif remaining_days > 0 %}
             <div class="status green">🟢 Còn {{ remaining_days }} ngày bảo hành</div>
             {% elif remaining_days == 0 %}
             <div class="status orange">🟡 Hết hạn hôm nay</div>
@@ -234,7 +245,7 @@
                 <p style="margin: 0 0 10px 0;">🟡 Sản phẩm chưa được kích hoạt</p>
                 <button id="btn-activate-{{ product.uuid }}" class="btn-activate"
                     onclick="activateWarranty('{{ product.uuid }}')">
-                    KÍCH HOẠT CHO KHÁCH LẺ
+                    KÍCH HOẠT SẢN PHẨM
                 </button>
             </div>
             {% else %}
@@ -243,11 +254,14 @@
             </div>
             {% endif %}
         </div>
-
-        <div class="description">Cảm ơn quý khách đã tin dùng!</div>
+        <div
+            style="background: #fff3cd; color: #856404; padding: 12px; border: 1px solid #ffeeba; text-align: center; font-weight: bold; margin: 10px; border-radius: 5px;">
+            ⚠️ THÔNG BÁO: Hệ thống đang cập nhật. Các đơn hàng tạo trước ngày 21/05 cần kiểm tra lại ngày bảo hành.
+        </div>
+        <div class="description">Cảm ơn Quý Khách đã tin dùng!</div>
     </div>
 
-    {% if current_user.role == 'admin' %}
+    {% if current_user.is_authenticated %}
     {% if claim_history_list %}
     <div class="box" style="margin-top: 20px;">
         <h2 style="text-align: center; text-transform: uppercase; font-size: 16px;">Lịch sử bảo hành</h2>
@@ -282,7 +296,7 @@
     </div>
 
     <script>
-        // Kích hoạt cho khách lẻ
+
         function activateWarranty(uuid) {
             Swal.fire({
                 title: 'Kích hoạt bảo hành?',
@@ -325,7 +339,7 @@
             })
         }
 
-        // Tiếp nhận bảo hành (Lưu Lịch sử)
+
         function claimWarranty(uuid, nextTime, isActivated) {
             let messageText = "";
 

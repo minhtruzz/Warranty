@@ -189,7 +189,6 @@
             outline: none;
         }
 
-        /* Select2 Custom */
         .select2-container--default .select2-selection--single {
             height: 43px;
             border: 1px solid #e2e8f0;
@@ -392,6 +391,18 @@
             transform: translateY(-2px);
             box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
         }
+
+        @keyframes popIn {
+            0% {
+                transform: scale(0.8);
+                opacity: 0;
+            }
+
+            100% {
+                transform: scale(1);
+                opacity: 1;
+            }
+        }
     </style>
 </head>
 
@@ -414,8 +425,8 @@
                 Phẩm</span></a>
         <a href="{{ url_for('manage_orders') }}" class="btn-side"><i class="fas fa-file-invoice"></i> <span>Quản lý Đơn
                 Hàng</span></a>
-        <a href="{{ url_for('manage_warranties') }}" class="btn-side"><i class="fas fa-shield-alt"></i> <span>Quản lý
-                Bảo Hành</span></a>
+        <a href="{{ url_for('manage_product_warranties') }}" class="btn-side"><i class="fas fa-shield-alt"></i>
+            <span>Sản Phẩm Bảo Hành</span></a>
         {% endif %}
 
         <div style="margin-top: auto; padding-bottom: 20px;">
@@ -455,7 +466,8 @@
 
                 <h2 style="margin: 0 0 20px 0; font-size: 1.2rem;">🛠 TẠO BILL MỚI</h2>
 
-                <form method="POST" action="/admin" onsubmit="this.querySelector('button[type=submit]').disabled=true;">
+                <form method="POST" action="/admin"
+                    onsubmit="if(!confirm('Bạn có chắc chắn TẠO BILL ngay không?')) return false; this.querySelector('button[type=submit]').disabled=true;">
                     <div style="display: flex; gap: 15px; margin-bottom: 10px;">
                         <input name="customer_name" placeholder="Nhập tên khách hàng" required style="flex: 2;">
                         <input name="customer_phone" placeholder="Số điện thoại" required style="flex: 1;">
@@ -476,11 +488,18 @@
                                 style="flex: 0.8;">
                             <div style="flex: 1.5;">
                                 <select name="warranty_months[]" style="width: 100%;">
-                                    <option value="12" selected>12 Tháng</option>
+                                    <option value="-1">1 Ngày</option>
+                                    <option value="-2">2 Ngày</option>
+                                    <option value="-3">3 Ngày</option>
+                                    <option value="-7">7 Ngày</option>
+                                    <option value="-10">10 Ngày</option>
+                                    <option value="-14">14 Ngày</option>
                                     <option value="1">1 Tháng</option>
                                     <option value="3">3 Tháng</option>
                                     <option value="6">6 Tháng</option>
-                                    <option value="24">24 Tháng</option>
+                                    <option value="12" selected>12 Tháng</option>
+                                    <option value="18">18 Tháng</option>
+                                    <option value="0">Không bảo hành</option>
                                 </select>
                             </div>
                             <button type="button" onclick="addProductRow()"
@@ -494,22 +513,25 @@
 
             <div class="box">
                 <h3 style="margin-top: 0;"><i class="fas fa-list-alt"></i> DANH SÁCH BILL</h3>
-                <form method="GET" action="/admin" style="display: flex; gap: 10px; margin-bottom: 20px;">
-                    <input type="text" name="search" placeholder="🔍 Tìm kiếm nhanh..." value="{{ search or '' }}"
-                        style="margin: 0; flex: 1;">
-                    <select name="per_page" style="width: 120px; margin: 0;" onchange="this.form.submit()">
+                <form id="searchForm" style="display: flex; gap: 10px; margin-bottom: 20px;">
+                    <input type="text" id="searchInput" name="search" placeholder="🔍 Tìm kiếm nhanh..."
+                        value="{{ search or '' }}" style="margin: 0; flex: 1;">
+
+                    <select name="per_page" id="perPageSelect" style="width: 120px; margin: 0;">
                         <option value="12" {% if per_page==12 %}selected{% endif %}>12/trang</option>
                         <option value="50" {% if per_page==50 %}selected{% endif %}>50/trang</option>
                         <option value="100" {% if per_page==100 %}selected{% endif %}>100/trang</option>
                     </select>
-                    {% if current_user.role | trim | lower == 'admin' %}
-                    <input type="file" id="hiddenExcelInput" accept=".xlsx, .xls, .csv" style="display: none;"
-                        onchange="handleImportProcess(this)">
-                    <button type="button" class="btn-import-excel"
-                        onclick="document.getElementById('hiddenExcelInput').click()">
-                        <i class="fas fa-file-excel"></i> Import
+                    <button type="button" class="btn-import-excel" style="background-color: var(--primary);"
+                        onclick="checkMissingReceipts()">
+                        <i class="fas fa-search-plus"></i> Kiểm tra số phiếu
                     </button>
-                    {% endif %}
+                    <input type="file" id="inputQuickImport" accept=".xlsx, .xls, .csv" style="display: none;"
+                        onchange="quickImportExcel(this)">
+                    <button type="button" class="btn-import-excel"
+                        onclick="document.getElementById('inputQuickImport').click()">
+                        <i class="fas fa-file-excel"></i> Import Số Lượng
+                    </button>
                 </form>
 
                 <table>
@@ -529,10 +551,7 @@
                             <td>{{ bill.customer_phone }}</td>
                             <td>
                                 <div class="actions">
-                                    <a href="/bill/{{ bill.id }}" target="_blank" title="Xem"><i
-                                            class="fas fa-eye"></i></a>
-                                    <!-- <a href="/print/{{ bill.id }}" target="_blank" title="In"><i
-                                            class="fas fa-print"></i></a> -->
+                                    <a href="/bill/{{ bill.id }}" title="Xem"><i class="fas fa-eye"></i></a>
                                     {% if current_user.role | trim | lower == 'admin' %}
                                     <form method="POST" action="/delete-bill/{{ bill.id }}"
                                         onsubmit="return confirm('Xoá bill này?');" style="margin:0; display: inline;">
@@ -559,33 +578,89 @@
                 </div>
                 {% endif %}
             </div>
+            <div id="missingReceiptModal"
+                style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 9999; align-items: center; justify-content: center; backdrop-filter: blur(3px);">
+                <div
+                    style="background: var(--card-light); width: 850px; max-height: 85vh; border-radius: 12px; padding: 25px; display: flex; flex-direction: column; box-shadow: 0 10px 25px rgba(0,0,0,0.2);">
+                    <h3
+                        style="margin-top: 0; border-bottom: 1px solid #edf2f7; padding-bottom: 15px; color: var(--primary);">
+                        <i class="fas fa-exclamation-triangle"></i> SẢN PHẨM CHƯA CÓ SỐ PHIẾU
+                    </h3>
+
+                    <div style="overflow-y: auto; flex: 1; margin-bottom: 20px;">
+                        <table style="width: 100%; border-collapse: collapse;">
+                            <thead style="position: sticky; top: 0; background: #f8fafc; z-index: 1;">
+                                <tr>
+                                    <th style="padding: 12px; border: 1px solid #edf2f7;">Mã Bill</th>
+                                    <th style="padding: 12px; border: 1px solid #edf2f7;">Sản Phẩm</th>
+                                    <th style="padding: 12px; border: 1px solid #edf2f7; width: 250px;">Nhập Số Phiếu
+                                    </th>
+                                </tr>
+                            </thead>
+                            <tbody id="missingReceiptBody">
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div
+                        style="display: flex; justify-content: flex-end; gap: 12px; border-top: 1px solid #edf2f7; padding-top: 15px;">
+                        <button onclick="closeMissingReceiptModal()"
+                            style="padding: 10px 20px; background: #64748b; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold;">Đóng</button>
+                        <button onclick="saveMissingReceipts()"
+                            style="padding: 10px 20px; background: var(--success); color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold;">
+                            <i class="fas fa-save"></i> Xác Nhận Lưu
+                        </button>
+                    </div>
+                </div>
+            </div>
+            <div id="customNotificationModal"
+                style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 99999; align-items: center; justify-content: center; backdrop-filter: blur(2px);">
+                <div
+                    style="background: var(--card-light); width: 350px; border-radius: 12px; padding: 30px 20px; text-align: center; box-shadow: 0 10px 25px rgba(0,0,0,0.2); animation: popIn 0.3s ease;">
+                    <div id="customNotiIcon" style="font-size: 60px; margin-bottom: 15px;"></div>
+                    <h3 id="customNotiTitle" style="margin-top: 0; margin-bottom: 10px; font-size: 22px;"></h3>
+                    <p id="customNotiMessage"
+                        style="margin-bottom: 25px; color: #64748b; font-size: 15px; line-height: 1.5;"></p>
+                    <button onclick="closeCustomNotification()"
+                        style="padding: 10px 25px; background: var(--primary); color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; width: 100%; font-size: 16px;">Đồng
+                        ý</button>
+                </div>
+            </div>
             <footer> &copy; {{ now.year }}, Design by minhtruzz.dev@gmail.com</footer>
         </div>
+
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script>
-        // HÀM KHỞI TẠO SELECT2
         function initSelect2(element) {
+            // Kiểm tra quyền Admin từ server gửi về
+            const isAdmin = "{{ current_user.role | trim | lower }}" === 'admin';
+
             const target = element ? $(element).find('.select-product') : $('.select-product');
             target.each(function () {
                 if (!$(this).hasClass("select2-hidden-accessible")) {
                     $(this).select2({
                         placeholder: "-- Chọn Sản Phẩm --",
-                        width: '100%'
+                        width: '100%',
+                        // Nếu là admin thì bật tags, user thì tắt tags
+                        tags: isAdmin,
+                        createTag: function (params) {
+                            // Nếu không phải admin, không cho phép tạo tag mới
+                            if (!isAdmin) return null;
+
+                            var term = $.trim(params.term);
+                            if (term === '') return null;
+                            return { id: term, text: term, newTag: true }
+                        }
                     });
                 }
             });
         }
 
-        $(document).ready(function () {
-            initSelect2();
-        });
+        $(document).ready(function () { initSelect2(); });
 
-        function toggleSidebar() {
-            const sidebar = document.getElementById('sidebar');
-            sidebar.classList.toggle('expanded');
-        }
+        function toggleSidebar() { document.getElementById('sidebar').classList.toggle('expanded'); }
 
         function addProductRow() {
             const container = document.getElementById('product-list');
@@ -593,11 +668,9 @@
             newRow.className = 'product-item';
             newRow.style.cssText = "display: flex; gap: 10px; margin-bottom: 10px; align-items: center;";
 
-            // Lấy danh sách options từ select đầu tiên để clone
             const masterSelect = document.querySelector('select[name="product_names[]"]');
             const tempSelect = masterSelect.cloneNode(true);
 
-            // Làm sạch dữ liệu Select2 cũ
             const cleanOptions = tempSelect.querySelectorAll('option');
             cleanOptions.forEach(opt => {
                 opt.removeAttribute('data-select2-id');
@@ -614,11 +687,17 @@
                 <input type="number" name="quantities[]" placeholder="SL" min="1" required style="flex: 0.8;">
                 <div style="flex: 1.5;">
                     <select name="warranty_months[]" style="width: 100%;">
-                        <option value="12" selected>12 Tháng</option>
+                        <option value="-1">1 Ngày</option>
+                        <option value="-2">2 Ngày</option>
+                        <option value="-3">3 Ngày</option>
+                        <option value="-7">7 Ngày</option>
+                        <option value="-10">10 Ngày</option>
+                        <option value="-14">14 Ngày</option>
                         <option value="1">1 Tháng</option>
                         <option value="3">3 Tháng</option>
                         <option value="6">6 Tháng</option>
-                        <option value="24">24 Tháng</option>
+                        <option value="12" selected>12 Tháng</option>
+                        <option value="18">18 Tháng</option>
                     </select>
                 </div>
                 <button type="button" onclick="this.closest('.product-item').remove()" 
@@ -626,10 +705,9 @@
             `;
 
             container.appendChild(newRow);
-            initSelect2(newRow); // Kích hoạt Select2 cho riêng hàng mới
+            initSelect2(newRow);
         }
 
-        // Theme Switcher
         const toggleSwitch = document.querySelector('#checkbox');
         const body = document.body;
         if (localStorage.getItem('theme') === 'dark') {
@@ -649,7 +727,6 @@
             }
         });
 
-        // Tự tắt thông báo flash
         setTimeout(() => {
             const flash = document.getElementById('flash-message');
             if (flash) {
@@ -658,88 +735,387 @@
             }
         }, 3000);
 
-        async function handleImportProcess(inputElement, isConfirmed = false) {
-            const file = inputElement.files[0];
-            if (!file) return;
-            const formData = new FormData();
-            formData.append('file', file);
-            formData.append('confirm', isConfirmed);
-
-            try {
-                if (!isConfirmed) {
-                    Swal.fire({
-                        title: 'Đang tải lên...',
-                        text: 'Vui lòng chờ xử lý dữ liệu',
-                        allowOutsideClick: false,
-                        didOpen: () => { Swal.showLoading() }
-                    });
-                }
-
-                const response = await fetch('/import-excel', {
-                    method: 'POST',
-                    body: formData
-                });
-
-                const data = await response.json();
-                if (!isConfirmed) Swal.close();
-
-                if (data.success) {
-                    if (data.require_confirm) {
-                        Swal.fire({
-                            title: '⚠️ Cảnh báo trùng dữ liệu',
-                            html: `Hệ thống tìm thấy <b>${data.count}</b> mã Bill đã tồn tại.<br>Bạn có muốn CẬP NHẬT thông tin mới cho các mã này không?`,
-                            icon: 'warning',
-                            showCancelButton: true,
-                            confirmButtonText: 'Đồng ý cập nhật!',
-                            cancelButtonText: 'Hủy bỏ'
-                        }).then((result) => {
-                            if (result.isConfirmed) {
-                                handleImportProcess(inputElement, true);
-                            } else {
-                                inputElement.value = '';
-                            }
-                        });
-                    }
-                    else {
-                        Swal.fire({ title: 'Thành công!', text: data.message, icon: 'success' }).then(() => { location.reload(); });
-                    }
-                } else {
-                    Swal.fire('Lỗi!', data.message, 'error');
-                    inputElement.value = '';
-                }
-            } catch (error) {
-                console.error(error);
-                Swal.fire('Lỗi hệ thống', 'Không thể kết nối đến server', 'error');
-                inputElement.value = '';
-            }
-        }
-
-        // Tìm khách hàng theo SĐT
-        document.addEventListener("DOMContentLoaded", function () {
+        document.addEventListener('DOMContentLoaded', function () {
+            const searchInput = document.getElementById('searchInput');
+            const perPageSelect = document.getElementById('perPageSelect');
             var phoneInput = document.querySelector('input[name="customer_phone"]');
             var nameInput = document.querySelector('input[name="customer_name"]');
+            let typingTimer;
+            const doneTypingInterval = 500; // Thời gian chờ sau khi ngừng gõ (0.5 giây)
 
             if (phoneInput && nameInput) {
+                // 2. Lắng nghe khi người dùng nhập xong và thoát khỏi ô SĐT
                 phoneInput.addEventListener('blur', function () {
                     var phone = this.value.trim();
+
+                    // Nếu SĐT dài hơn 3 số mới bắt đầu tìm
                     if (phone.length > 3) {
                         nameInput.setAttribute('placeholder', 'Đang tìm tên...');
+
+                        // 3. Gọi API lấy thông tin từ DB (giữ nguyên đường dẫn cũ)
                         fetch('/api/get-customer-info?phone=' + phone)
                             .then(response => response.json())
                             .then(data => {
                                 if (data.found) {
+                                    // Nếu thấy thì điền tên và đổi màu nền sang xanh nhẹ
                                     nameInput.value = data.name;
                                     nameInput.style.backgroundColor = "#d1e7dd";
                                 } else {
+                                    // Nếu không thấy thì để lại màu trắng
                                     nameInput.style.backgroundColor = "#fff";
                                     nameInput.setAttribute('placeholder', 'Nhập tên khách hàng');
                                 }
                             })
-                            .catch(err => console.error("Lỗi:", err));
+                            .catch(err => console.error("Lỗi tìm khách hàng:", err));
                     }
                 });
             }
+
+            // Hàm thực hiện điều hướng (Search)
+            function doSearch() {
+                const searchValue = searchInput.value.trim();
+                const perPageValue = perPageSelect.value;
+
+                let url = new URL(window.location.origin + window.location.pathname);
+
+                // Nếu có giá trị tìm kiếm thì thêm vào URL, nếu rỗng thì bỏ qua (fix lỗi F5 bạn gặp)
+                if (searchValue !== "") {
+                    url.searchParams.set('search', searchValue);
+                }
+                url.searchParams.set('per_page', perPageValue);
+
+                window.location.href = url.toString();
+            }
+
+            // Sự kiện 1: Khi người dùng đang gõ (Live Search)
+            searchInput.addEventListener('input', function () {
+                clearTimeout(typingTimer);
+                // Nếu ô nhập trống, load lại trang gốc ngay lập tức
+                if (this.value.trim() === "") {
+                    doSearch();
+                } else {
+                    // Nếu đang gõ, đợi 0.5s sau khi ngừng gõ mới load
+                    typingTimer = setTimeout(doSearch, doneTypingInterval);
+                }
+            });
+
+            // Sự kiện 2: Khi thay đổi số lượng bản ghi
+            perPageSelect.addEventListener('change', function () {
+                doSearch();
+            });
+
+            // Sự kiện 3: Ngăn Form reload trang kiểu cũ khi nhấn Enter
+            document.getElementById('searchForm').addEventListener('submit', function (e) {
+                e.preventDefault();
+                doSearch();
+            });
+
+            searchInput.addEventListener('input', function () {
+                if (this.value.trim() === "") {
+                    executeSearch();
+                }
+            });
+
         });
+        function quickImportExcel(inputElement, isConfirmed = false) {
+            if (!inputElement.files || !inputElement.files[0]) return;
+
+            const file = inputElement.files[0];
+            const formData = new FormData();
+            formData.append('file', file);
+            if (isConfirmed) formData.append('confirm', 'true');
+
+            Swal.fire({
+                title: isConfirmed ? 'Đang tạo đơn hàng và sản phẩm...' : 'Đang đọc dữ liệu...',
+                allowOutsideClick: false,
+                didOpen: () => { Swal.showLoading(); }
+            });
+
+            fetch('/quick-import-excel', {
+                method: 'POST',
+                body: formData
+            })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) {
+                        if (data.require_confirm) {
+                            // MODAL ĐẦY ĐỦ: MÃ KH, TÊN KH, TÊN SP, SL
+                            let rows = data.preview_data.map(d => `
+                    <tr>
+                        <td style="border:1px solid #ddd;padding:5px;">${d.ma_kh}</td>
+                        <td style="border:1px solid #ddd;padding:5px;">${d.ten_kh}</td>
+                        <td style="border:1px solid #ddd;padding:5px;">${d.ten_sp}</td>
+                        <td style="border:1px solid #ddd;padding:5px;font-weight:bold;color:blue;text-align:center;">${d.so_luong}</td>
+                    </tr>
+                `).join('');
+
+                            Swal.fire({
+                                title: 'Xác nhận nạp đơn hàng',
+                                html: `
+                        <div style="max-height:350px;overflow-y:auto;">
+                            <table style="width:100%;font-size:12px;border-collapse:collapse;text-align:left;">
+                                <thead style="background:#f4f4f4; position:sticky; top:0;">
+                                    <tr>
+                                        <th style="padding:8px;border:1px solid #ddd;">Mã KH</th>
+                                        <th style="padding:8px;border:1px solid #ddd;">Tên Khách</th>
+                                        <th style="padding:8px;border:1px solid #ddd;">Tên Sản Phẩm</th>
+                                        <th style="padding:8px;border:1px solid #ddd;text-align:center;">Số Lượng</th>
+                                    </tr>
+                                </thead>
+                                <tbody>${rows}</tbody>
+                            </table>
+                        </div>`,
+                                width: '800px',
+                                showCancelButton: true,
+                                confirmButtonText: 'Đồng ý tạo đơn',
+                                cancelButtonText: 'Hủy'
+                            }).then(result => {
+                                if (result.isConfirmed) {
+                                    // GỌI LẠI ĐỂ LƯU. File vẫn còn vì ta chưa xóa nó!
+                                    quickImportExcel(inputElement, true);
+                                } else {
+                                    inputElement.value = ''; // Bấm hủy thì mới xóa file
+                                }
+                            });
+                        } else {
+                            Swal.fire('Thành công', data.message, 'success').then(() => {
+                                inputElement.value = ''; // Lưu xong mới xóa file
+                                location.reload();
+                            });
+                        }
+                    } else {
+                        Swal.fire('Lỗi', data.message, 'error');
+                        inputElement.value = ''; // Lỗi cũng xóa file để chọn lại
+                    }
+                })
+                .catch(err => {
+                    Swal.fire('Lỗi', 'Không kết nối được với Server', 'error');
+                    inputElement.value = '';
+                });
+        }
+        // ================= HÀM XỬ LÝ SỐ PHIẾU VÀ THÔNG BÁO ================= //
+
+        // --- HỆ THỐNG THÔNG BÁO CUSTOM ---
+        let notificationCallback = null;
+
+        function showCustomNotification(title, message, type, autoCloseTime = 0, callback = null) {
+            const modal = document.getElementById('customNotificationModal');
+            const icon = document.getElementById('customNotiIcon');
+            const titleEl = document.getElementById('customNotiTitle');
+            const msgEl = document.getElementById('customNotiMessage');
+            notificationCallback = callback; // Lưu lại hành động tiếp theo (ví dụ: reload trang)
+
+            // Chỉnh màu theo Dark Mode
+            const modalBox = modal.querySelector('div');
+            if (document.body.classList.contains('dark-mode')) {
+                modalBox.style.background = 'var(--card-dark)';
+                titleEl.style.color = '#fff';
+            } else {
+                modalBox.style.background = 'var(--card-light)';
+                titleEl.style.color = '#000';
+            }
+
+            // Set icon theo loại thông báo
+            if (type === 'success') {
+                icon.innerHTML = '<i class="fas fa-check-circle" style="color: var(--success);"></i>';
+            } else if (type === 'error') {
+                icon.innerHTML = '<i class="fas fa-times-circle" style="color: var(--danger);"></i>';
+            } else if (type === 'warning') {
+                icon.innerHTML = '<i class="fas fa-exclamation-triangle" style="color: #f59e0b;"></i>';
+            }
+
+            titleEl.innerText = title;
+            msgEl.innerText = message;
+            modal.style.display = 'flex';
+
+            // Tự động đóng nếu có set thời gian
+            if (autoCloseTime > 0) {
+                setTimeout(() => {
+                    if (modal.style.display === 'flex') closeCustomNotification();
+                }, autoCloseTime);
+            }
+        }
+
+        function closeCustomNotification() {
+            document.getElementById('customNotificationModal').style.display = 'none';
+            if (typeof notificationCallback === 'function') {
+                let cb = notificationCallback;
+                notificationCallback = null;
+                cb(); // Thực thi hành động tiếp theo
+            }
+        }
+
+        // --- CÁC HÀM XỬ LÝ SỐ PHIẾU NHƯ CŨ (Đổi sang dùng Modal thông báo mới) ---
+
+        function closeMissingReceiptModal() {
+            document.getElementById('missingReceiptModal').style.display = 'none';
+        }
+
+        function autoFillReceipt(element) {
+            let val = element.value;
+            let maBill = element.getAttribute('data-mabill');
+
+            let allInputs = document.querySelectorAll('.missing-receipt-input');
+            allInputs.forEach(input => {
+                if (input.getAttribute('data-mabill') === maBill && input !== element) {
+                    input.value = val;
+                }
+            });
+        }
+
+        function handleEnter(event, element) {
+            if (event.key === "Enter" || event.keyCode === 13) {
+                event.preventDefault();
+                saveIndividualReceipt(element);
+            }
+        }
+
+        // HÀM LƯU LẺ TỪNG CÁI KHI ẤN ENTER
+        function saveIndividualReceipt(element) {
+            let val = element.value.trim();
+            if (val === '') {
+                showCustomNotification('Cảnh báo', 'Vui lòng nhập số phiếu!', 'warning');
+                return;
+            }
+
+            let maBill = element.getAttribute('data-mabill');
+            let updates = [];
+            let inputsToProcess = [];
+
+            let allInputs = document.querySelectorAll('.missing-receipt-input');
+            allInputs.forEach(input => {
+                if (input.getAttribute('data-mabill') === maBill && input.value.trim() !== '') {
+                    updates.push({ id: input.getAttribute('data-id'), so_phieu: input.value.trim() });
+                    inputsToProcess.push(input);
+                }
+            });
+
+            element.disabled = true;
+
+            fetch('/api/save-receipts', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ updates: updates })
+            })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) {
+                        inputsToProcess.forEach(inp => {
+                            let tr = inp.closest('tr');
+                            if (tr) tr.remove();
+                        });
+
+                        let remaining = document.querySelectorAll('.missing-receipt-input');
+                        if (remaining.length === 0) {
+                            closeMissingReceiptModal();
+                            // Thông báo xong sẽ tự động reload trang
+                            showCustomNotification('Tuyệt vời!', 'Đã cập nhật TẤT CẢ số phiếu!', 'success', 0, () => {
+                                location.reload();
+                            });
+                        } else {
+                            // Tự tắt sau 1 giây, ko cần bấm nút OK
+                            showCustomNotification('Thành công', 'Đã thêm số phiếu!', 'success', 1000);
+
+                            let nextInput = document.querySelector('.missing-receipt-input');
+                            if (nextInput) nextInput.focus();
+                        }
+                    } else {
+                        element.disabled = false;
+                        showCustomNotification('Lỗi nhập liệu', data.message, 'error');
+                    }
+                })
+                .catch(err => {
+                    element.disabled = false;
+                    showCustomNotification('Lỗi', 'Không thể kết nối máy chủ', 'error');
+                });
+        }
+
+        // HÀM LƯU TẤT CẢ KHI BẤM NÚT XÁC NHẬN LƯU
+        function saveMissingReceipts() {
+            let inputs = document.querySelectorAll('.missing-receipt-input');
+            let updates = [];
+            let inputsToProcess = [];
+
+            inputs.forEach(input => {
+                if (input.value.trim() !== '') {
+                    updates.push({ id: input.getAttribute('data-id'), so_phieu: input.value.trim() });
+                    inputsToProcess.push(input);
+                }
+            });
+
+            if (updates.length === 0) {
+                showCustomNotification('Cảnh báo', 'Vui lòng nhập ít nhất 1 số phiếu!', 'warning');
+                return;
+            }
+
+            fetch('/api/save-receipts', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ updates: updates })
+            }).then(res => res.json()).then(data => {
+                if (data.success) {
+                    inputsToProcess.forEach(inp => {
+                        let tr = inp.closest('tr');
+                        if (tr) tr.remove();
+                    });
+
+                    let remaining = document.querySelectorAll('.missing-receipt-input');
+                    if (remaining.length === 0) {
+                        closeMissingReceiptModal();
+                        showCustomNotification('Tuyệt vời!', 'Đã cập nhật TẤT CẢ số phiếu!', 'success', 0, () => location.reload());
+                    } else {
+                        showCustomNotification('Thành công', 'Đã lưu các số phiếu được nhập!', 'success', 1500);
+                    }
+                } else {
+                    showCustomNotification('Lỗi nhập liệu', data.message, 'error');
+                }
+            });
+        }
+
+        // HÀM MỞ MODAL VÀ LOAD DỮ LIỆU
+        function checkMissingReceipts() {
+            fetch('/api/get-missing-receipts')
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success && data.items.length > 0) {
+                        let html = '';
+                        data.items.forEach(item => {
+                            html += `
+                    <tr>
+                        <td style="padding: 10px; border: 1px solid #edf2f7; text-align: center; font-weight: bold; color: var(--primary);">${item.ma_bill}</td>
+                        <td style="padding: 10px; border: 1px solid #edf2f7;">${item.ten_sp}</td>
+                        <td style="padding: 10px; border: 1px solid #edf2f7;">
+                            <input type="text" class="missing-receipt-input" 
+                                data-id="${item.id}" 
+                                data-mabill="${item.ma_bill}" 
+                                oninput="autoFillReceipt(this)" 
+                                onkeypress="handleEnter(event, this)" 
+                                placeholder="Nhập phiếu rồi Enter..." 
+                                style="width: 100%; margin: 0; padding: 8px;">
+                        </td>
+                    </tr>`;
+                        });
+
+                        const modalBox = document.querySelector('#missingReceiptModal > div');
+                        if (document.body.classList.contains('dark-mode')) { modalBox.style.background = 'var(--card-dark)'; }
+                        else { modalBox.style.background = 'var(--card-light)'; }
+
+                        document.getElementById('missingReceiptBody').innerHTML = html;
+                        document.getElementById('missingReceiptModal').style.display = 'flex';
+
+                        let firstInput = document.querySelector('.missing-receipt-input');
+                        if (firstInput) firstInput.focus();
+
+                    } else if (data.success && data.items.length === 0) {
+                        showCustomNotification('Hoàn hảo!', 'Tất cả sản phẩm đều đã được nhập số phiếu đầy đủ.', 'success');
+                    } else {
+                        showCustomNotification('Lỗi', data.message, 'error');
+                    }
+                })
+                .catch(err => {
+                    showCustomNotification('Lỗi mạng', 'Không kết nối được với máy chủ', 'error');
+                });
+        }
     </script>
 </body>
 

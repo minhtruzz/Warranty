@@ -5,12 +5,8 @@
     <meta charset="UTF-8">
     <title>In Tem QR</title>
     <style>
-        /* =========================================
-           1. CÀI ĐẶT RIÊNG CHO MÁY IN TEM NHÃN
-           ========================================= */
         @page {
-            /* Cập nhật khổ giấy máy in 15x8mm */
-            size: 15mm 8mm;
+            size: 25mm 13mm;
             margin: 0mm !important;
         }
 
@@ -18,6 +14,8 @@
 
             body,
             html {
+                width: 25mm;
+                height: 13mm;
                 margin: 0 !important;
                 padding: 0 !important;
                 background-color: white;
@@ -28,9 +26,8 @@
             }
 
             .qr-item {
-                /* Ép chính xác từng thẻ div bằng đúng khổ tem mới */
-                width: 15mm !important;
-                height: 8mm !important;
+                width: 25mm !important;
+                height: 13mm !important;
                 margin: 0 !important;
                 padding: 0 !important;
                 border: none !important;
@@ -40,10 +37,9 @@
             }
 
             .qr-item img {
-                width: 15mm !important;
-                height: 8mm !important;
+                width: 100% !important;
+                height: 100% !important;
                 object-fit: contain !important;
-                margin: 0 !important;
                 display: block;
             }
 
@@ -52,9 +48,6 @@
             }
         }
 
-        /* =========================================
-           2. GIAO DIỆN HIỂN THỊ TRÊN MÀN HÌNH WEB
-           ========================================= */
         @media screen {
             body {
                 font-family: 'Segoe UI', Arial, sans-serif;
@@ -76,10 +69,11 @@
                 border-radius: 8px;
                 text-align: center;
                 box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+                width: 200px;
+                /* Khung cố định để xem trên màn hình */
             }
 
             .qr-item img {
-                /* Kích thước hiển thị to trên màn hình (theo đúng tỷ lệ chuẩn DPI máy in: 177x94px) */
                 width: 177px;
                 height: 94px;
                 display: block;
@@ -89,10 +83,31 @@
 
             .qr-label {
                 margin-top: 10px;
-                font-size: 14px;
+                font-size: 20px;
                 font-weight: bold;
                 color: #333;
-                word-break: break-all;
+                text-align: left;
+                /* Căn lề trái giống ảnh bạn gửi */
+
+                /* 1. Xử lý tên sản phẩm và mã gộp chung */
+                display: -webkit-box;
+                -webkit-box-orient: vertical;
+                overflow: hidden;
+
+                /* 2. Ép toàn bộ nội dung phải hiển thị, mã không được khuyết */
+                word-break: break-all !important;
+                white-space: normal !important;
+                line-height: 1.3;
+            }
+
+            /* Tạo hiệu ứng ... cho tên sản phẩm (nếu bạn có thể can thiệp nội dung) */
+            /* Ở đây mình dùng CSS để giới hạn tổng số dòng hiển thị là 3 dòng 
+               để đảm bảo Mã luôn xuất hiện ở dòng cuối và không bị mất */
+            .qr-label {
+                display: -webkit-box;
+                -webkit-line-clamp: 4;
+                /* Cho phép hiển thị tối đa 4 dòng để chứa cả tên và mã */
+                -webkit-box-orient: vertical;
             }
         }
     </style>

@@ -450,7 +450,14 @@
                             style="display: none; background-color: var(--danger); color: white;">
                             <i class="fas fa-trash-alt"></i> Xóa đã chọn (<span id="selectedCount">0</span>)
                         </button>
-
+                        {% if current_user.role | trim | lower == 'admin' %}
+                        <input type="file" id="hiddenExcelInput" accept=".xlsx, .xls, .csv" style="display: none;"
+                            onchange="handleImportProcess(this)">
+                        <button type="button" class="btn" onclick="document.getElementById('hiddenExcelInput').click()"
+                            style="background-color: #107c10; color: white; border: none; padding: 8px 16px; border-radius: 8px; font-weight: 500; display: flex; align-items: center; gap: 8px;">
+                            <i class="fas fa-file-excel"></i> Import
+                        </button>
+                        {% endif %}
                         <a href="{{ url_for('export_excel') }}" class="btn-back"
                             style="background-color: #2ecc71; color: white;">
                             <i class="fas fa-file-excel"></i> Export
@@ -625,8 +632,10 @@
                     <table class="detail-table">
                         <thead>
                             <tr>
-                                <th>Tên sản phẩm / Gói</th>
-                                <th>Số phiếu / Note</th>
+                                <th>Tên sản phẩm</th>
+                                <th>Số phiếu</th>
+                                <th>Người tạo</th>
+                                <th>Bảo Hành</th>
                                 <th style="text-align:right;">Hành động</th>
                             </tr>
                         </thead>
@@ -646,7 +655,7 @@
     <script>
         let currentBillCode = '';
 
-        // --- HÀM MỚI: GỬI NGẦM FORM EDIT VÀ KHÔNG RELOAD SANG TRANG ADMIN ---
+
         async function submitEditForm(event) {
             event.preventDefault();
 
@@ -722,44 +731,145 @@
                 loader.style.display = 'none';
                 if (data.success && data.items.length > 0) {
                     data.items.forEach(item => {
+                        // Tính toán hiển thị Ngày/Tháng cho đẹp mắt
+                        let bh_text = 'Không BH';
+                        let bh_val = item.warranty_months || 0;
+                        if (bh_val > 0) bh_text = bh_val + ' tháng';
+                        else if (bh_val < 0) bh_text = Math.abs(bh_val) + ' ngày';
+
                         tbody.innerHTML += `
                             <tr>
                                 <td><div style="font-weight:600;">${item.product_name}</div></td>
-                                <td style="color: #666;">${item.so_phieu ? '<span style="background:#f1f5f9; padding:2px 6px; border-radius:4px;">' + item.so_phieu + '</span>' : '---'}</td>
+                                <td style="color: #666;">
+                                    ${item.so_phieu ? '<span style="background:#f1f5f9; padding:2px 6px; border-radius:4px;">' + item.so_phieu + '</span>' : '---'}
+                                </td>
+                                <td>
+                                    <span id="name-${item.uuid}" class="badge-info" style="background:#e0e7ff; color:#4338ca; padding:2px 6px; border-radius:4px;">
+                                        ${item.created_by || 'Admin'}
+                                    </span>
+                                </td>
+                                
+                                <td style="font-weight:bold; color:var(--primary);">
+                                    ${bh_text}
+                                </td>
+
                                 <td style="text-align: right;">
-                                    <button class="btn-icon text-edit" onclick="apiEditItem(${item.id}, ${item.product_id}, '${item.so_phieu || ''}')"><i class="fas fa-edit"></i></button>
-                                    <button class="btn-icon text-del" onclick="apiDeleteItem(${item.id})"><i class="fas fa-trash"></i></button>
+                                    <button class="btn-icon text-edit" onclick="apiEditItem(${item.id}, ${item.product_id}, '${item.so_phieu || ''}', '${item.created_by || 'Admin'}', '${bh_val}')">
+                                        <i class="fas fa-edit"></i>
+                                    </button>
+                                    
+                                    <button class="btn-icon text-del" title="Xóa" 
+                                        onclick="apiDeleteItem('${item.uuid}')">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
                                 </td>
                             </tr>`;
                     });
-                } else { tbody.innerHTML = '<tr><td colspan="3"><div class="empty-state">Chưa có sản phẩm.</div></td></tr>'; }
+                } else { tbody.innerHTML = '<tr><td colspan="5"><div class="empty-state">Chưa có sản phẩm.</div></td></tr>'; }
             });
         }
 
-        async function apiEditItem(itemId, currentProductId, currentNote) {
-            const response = await fetch('/api/all-products');
-            const data = await response.json();
-            if (!data.success) return;
+        async function apiEditItem(itemId, currentProductId, currentNote, currentCreator, currentWarranty) {
+            try {
+                const [resProducts, resUsers] = await Promise.all([
+                    fetch('/api/all-products').then(res => res.json()),
+                    fetch('/api/all-users').then(res => res.json())
+                ]);
 
-            let options = data.products.map(p => `<option value="${p.id}" ${p.id == currentProductId ? 'selected' : ''}>${p.product_name}</option>`).join('');
-
-            Swal.fire({
-                title: 'Sửa sản phẩm',
-                html: `<select id="swal-product-select" class="swal2-input">${options}</select>
-                       <input id="swal-note-input" class="swal2-input" value="${currentNote}">`,
-                preConfirm: () => ({ newProductId: document.getElementById('swal-product-select').value, newNote: document.getElementById('swal-note-input').value })
-            }).then((result) => {
-                if (result.isConfirmed) {
-                    fetch('/api/update-item', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ id: itemId, product_id: result.value.newProductId, so_phieu: result.value.newNote })
-                    }).then(res => res.json()).then(apiRes => {
-                        if (apiRes.success) { loadItems(); Swal.fire('Xong!', '', 'success'); }
-                    });
+                if (!resProducts.success || !resUsers.success) {
+                    Swal.fire('Lỗi', 'Không thể tải danh sách dữ liệu từ server', 'error');
+                    return;
                 }
-            });
+
+                let productOptions = resProducts.products.map(p =>
+                    `<option value="${p.id}" ${p.id == currentProductId ? 'selected' : ''}>${p.product_name}</option>`
+                ).join('');
+
+                let userOptions = resUsers.users.map(u =>
+                    `<option value="${u.username}" ${u.username == currentCreator ? 'selected' : ''}>${u.username}</option>`
+                ).join('');
+
+                Swal.fire({
+                    title: 'Cập nhật thông tin',
+                    html: `
+                <div style="text-align:left; font-size:13px; color:#666; margin-bottom:5px;">Sản phẩm:</div>
+                <select id="swal-product-select" class="swal2-input" style="margin-top:0; width:80%;">${productOptions}</select>
+                
+                <div style="text-align:left; font-size:13px; color:#666; margin-bottom:5px; margin-top:15px;">Người tạo:</div>
+                <select id="swal-creator-select" class="swal2-input" style="margin-top:0; width:80%;">
+                    <option value="Admin" ${currentCreator == 'Admin' ? 'selected' : ''}>Admin</option>
+                    ${userOptions}
+                </select>
+
+                <div style="text-align:left; font-size:13px; color:#666; margin-bottom:5px; margin-top:15px;">Số phiếu:</div>
+                <input id="swal-note-input" class="swal2-input" style="margin-top:0; width:80%;" value="${currentNote || ''}" placeholder="Nhập số phiếu...">
+                
+                <div style="text-align:left; font-size:13px; color:#666; margin-bottom:5px; margin-top:15px;">Bảo hành (Nhập -1 = 1 ngày, 12 = 12 tháng, 0 = Không BH):</div>
+                <input id="swal-warranty-input" type="number" class="swal2-input" style="margin-top:0; width:80%;" value="${currentWarranty || 0}">
+            `,
+                    focusConfirm: false,
+                    showCancelButton: true,
+                    confirmButtonText: 'Lưu thay đổi',
+                    cancelButtonText: 'Hủy',
+                    preConfirm: () => {
+                        const newNote = document.getElementById('swal-note-input').value.trim();
+
+                        // Validate số phiếu không được để trống
+                        if (!newNote) {
+                            Swal.showValidationMessage('Vui lòng nhập số phiếu');
+                            return false;
+                        }
+
+                        return {
+                            newProductId: document.getElementById('swal-product-select').value,
+                            newNote: newNote,
+                            newCreator: document.getElementById('swal-creator-select').value,
+                            newWarranty: document.getElementById('swal-warranty-input').value,
+                            oldNote: currentNote // Gửi số phiếu cũ để server biết mà loại trừ
+                        }
+                    }
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        fetch('/api/update-item', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                id: itemId,
+                                product_id: result.value.newProductId,
+                                so_phieu: result.value.newNote,
+                                created_by: result.value.newCreator,
+                                warranty_months: result.value.newWarranty,
+                                old_so_phieu: result.value.oldNote, // Gửi số phiếu cũ để server loại trừ
+                                bill_code: currentBillCode // Gửi mã bill hiện tại
+                            })
+                        })
+                            .then(res => res.json())
+                            .then(apiRes => {
+                                if (apiRes.success) {
+                                    Swal.fire({
+                                        icon: 'success',
+                                        title: 'Thành công',
+                                        text: 'Đã cập nhật số phiếu!',
+                                        timer: 1500,
+                                        showConfirmButton: false
+                                    });
+                                    loadItems();
+                                } else {
+                                    Swal.fire('Lỗi', apiRes.message || 'Không thể cập nhật số phiếu', 'error');
+                                }
+                            })
+                            .catch(err => {
+                                console.error('Lỗi API:', err);
+                                Swal.fire('Lỗi', 'Không thể kết nối đến server', 'error');
+                            });
+                    }
+                });
+            } catch (err) {
+                console.error(err);
+                Swal.fire('Lỗi hệ thống', 'Không thể kết nối API', 'error');
+            }
         }
+
 
         function apiDeleteItem(id) {
             Swal.fire({ title: 'Xóa?', showCancelButton: true }).then(r => {
@@ -770,7 +880,7 @@
             });
         }
 
-        // --- XÓA NHIỀU ---
+
         const selectAllHeader = document.getElementById('selectAll');
         const checkboxes = document.getElementsByClassName('bill-checkbox');
         const btnDeleteSelected = document.getElementById('btnDeleteSelected');
@@ -831,8 +941,68 @@
             });
         });
 
+
         window.onclick = e => {
             if (e.target.classList.contains('modal-overlay')) closeModal(e.target.id);
+        }
+        function handleImportProcess(inputElement, isConfirmed = false) {
+            if (!inputElement.files || !inputElement.files[0]) return;
+
+            const file = inputElement.files[0];
+            const formData = new FormData();
+            formData.append('file', file);
+
+            // Nếu là bước xác nhận thì gửi thêm confirm=true
+            if (isConfirmed) {
+                formData.append('confirm', 'true');
+            }
+
+            Swal.fire({
+                title: isConfirmed ? 'Đang thực thi...' : 'Đang kiểm tra file...',
+                allowOutsideClick: false,
+                didOpen: () => { Swal.showLoading(); }
+            });
+
+            fetch('/import-excel', { // Gọi đúng URL trong app.py
+                method: 'POST',
+                body: formData
+            })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) {
+                        if (data.require_confirm) {
+                            // Bước này hiển thị xác nhận số lượng đơn từ Excel
+                            Swal.fire({
+                                title: 'Xác nhận Import',
+                                text: `Tìm thấy ${data.count} đơn hàng trong file. Bạn có muốn tiếp tục cập nhật vào hệ thống không?`,
+                                icon: 'question',
+                                showCancelButton: true,
+                                confirmButtonText: 'Đồng ý Import',
+                                cancelButtonText: 'Hủy'
+                            }).then((result) => {
+                                if (result.isConfirmed) {
+                                    // Gọi lại chính hàm này với biến isConfirmed = true
+                                    handleImportProcess(inputElement, true);
+                                } else {
+                                    inputElement.value = ''; // Reset file nếu hủy
+                                }
+                            });
+                        } else {
+                            // Kết quả cuối cùng
+                            Swal.fire('Thành công', data.message, 'success').then(() => {
+                                location.reload();
+                            });
+                        }
+                    } else {
+                        Swal.fire('Lỗi', data.message, 'error');
+                        inputElement.value = '';
+                    }
+                })
+                .catch(err => {
+                    console.error(err);
+                    Swal.fire('Lỗi hệ thống', 'Không thể kết nối đến máy chủ', 'error');
+                    inputElement.value = '';
+                });
         }
     </script>
 </body>

@@ -1,0 +1,617 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sản Phẩm Bảo Hành - Admin</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        /* ==========================================
+           CSS GỐC CỦA TRANG ADMIN
+           ========================================== */
+        :root {
+            --primary: #4361ee;
+            --success: #2ecc71;
+            --danger: #ef476f;
+            --dark-bg: #f4f7f6;
+            --card-light: #ffffff;
+            --border: #e2e8f0;
+            --text-main: #333;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--dark-bg);
+            color: var(--text-main);
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            /* Chống cuộn toàn trang, chỉ cuộn ở khung nội dung */
+        }
+
+        /* --- Main Content & Header --- */
+        .main-content {
+            /* Đã sửa margin-left từ 250px thành 0 để không bị lệch */
+            margin-left: 0;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
+
+        .header {
+            background: white;
+            padding: 15px 25px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+            z-index: 100;
+        }
+
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .header-left h2 {
+            margin: 0;
+            font-size: 1.2rem;
+            color: var(--text-main);
+        }
+
+        /* ==========================================
+           CSS GIAO DIỆN SẢN PHẨM BẢO HÀNH
+           ========================================== */
+        .warranty-container {
+            display: flex;
+            gap: 20px;
+            padding: 20px;
+            flex: 1;
+            /* Chiếm hết chiều cao còn lại dưới Header */
+            box-sizing: border-box;
+            max-width: 100%;
+            overflow: hidden;
+        }
+
+        .card {
+            background: var(--card-light);
+            border-radius: 10px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            border: 1px solid var(--border);
+        }
+
+        /* --- Cột bên trái (Danh sách SP) --- */
+        .product-list {
+            width: 30%;
+            height: 100%;
+            overflow-y: auto;
+            position: relative;
+        }
+
+        .product-list h3 {
+            background: var(--primary);
+            color: white;
+            padding: 15px 20px;
+            margin: 0;
+            font-size: 16px;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+
+        .left-search {
+            position: sticky;
+            top: 49px;
+            background: white;
+            padding: 10px;
+            border-bottom: 1px solid var(--border);
+            z-index: 9;
+        }
+
+        .left-search input {
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            box-sizing: border-box;
+            outline: none;
+        }
+
+        .left-search input:focus {
+            border-color: var(--primary);
+        }
+
+        .product-item {
+            padding: 15px 20px;
+            border-bottom: 1px solid var(--border);
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .product-item:hover {
+            background-color: #f8f9fc;
+            padding-left: 25px;
+        }
+
+        .product-item.active {
+            background-color: #edf2f9;
+            border-left: 4px solid var(--primary);
+            font-weight: bold;
+            color: var(--primary);
+        }
+
+        .product-item.disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            pointer-events: none;
+            background-color: #f9f9f9;
+        }
+
+        /* --- Cột bên phải (Chi tiết) --- */
+        .detail-view {
+            width: 70%;
+            height: 100%;
+            padding: 20px;
+            overflow-y: auto;
+        }
+
+        .detail-view h2 {
+            margin-top: 0;
+            color: #2b2b2b;
+            border-bottom: 2px solid var(--primary);
+            padding-bottom: 10px;
+            display: inline-block;
+        }
+
+        .controls {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .search-box {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .search-box input[type="text"] {
+            padding: 10px 15px;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            width: 300px;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        .search-box input:focus {
+            border-color: var(--primary);
+        }
+
+        .limit-select {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            margin-left: 10px;
+        }
+
+        .limit-select select {
+            padding: 9px;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            outline: none;
+            cursor: pointer;
+        }
+
+        .btn {
+            padding: 9px 16px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            color: white;
+            font-weight: 500;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            transition: opacity 0.2s;
+        }
+
+        .btn:hover {
+            opacity: 0.9;
+        }
+
+        .btn-primary {
+            background-color: var(--primary);
+        }
+
+        .btn-success {
+            background-color: var(--success);
+        }
+
+        .btn-secondary {
+            background-color: #6c757d;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+
+        th,
+        td {
+            border: 1px solid var(--border);
+            padding: 12px 15px;
+            text-align: left;
+        }
+
+        th {
+            background-color: #f8f9fa;
+            color: #495057;
+            font-weight: 600;
+        }
+
+        tr:hover {
+            background-color: #fdfdfd;
+        }
+
+        .pagination {
+            margin-top: 20px;
+            display: flex;
+            gap: 5px;
+            justify-content: flex-end;
+        }
+
+        .page-btn {
+            padding: 8px 12px;
+            border: 1px solid var(--border);
+            background: white;
+            cursor: pointer;
+            border-radius: 4px;
+        }
+
+        .page-btn:hover {
+            background: #f1f1f1;
+        }
+
+        .page-btn.active {
+            background: var(--primary);
+            color: white;
+            border-color: var(--primary);
+        }
+
+        @media print {
+            .no-print {
+                display: none !important;
+            }
+
+            .header {
+                display: none !important;
+            }
+
+            .main-content {
+                margin: 0 !important;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="main-content" id="mainContent">
+
+        <div class="header">
+            <div class="header-left">
+                <h2>Sản Phẩm Bảo Hành</h2>
+            </div>
+        </div>
+
+        <div class="warranty-container">
+
+            <div class="card product-list">
+                <h3><i class="fas fa-box-open"></i> DANH SÁCH BẢO HÀNH</h3>
+
+                <div class="left-search">
+                    <input type="text" id="leftSearchInput" placeholder="Tìm tên sản phẩm..."
+                        onkeyup="filterProducts()">
+                </div>
+
+                <div id="productListContainer">
+                    {% for p in products %}
+                    {% if '(Ẩn)' in p.product_name %}
+                    <div class="product-item disabled" title="Sản phẩm này đã bị ẩn">
+                        <i class="fas fa-ban" style="color: #ccc;"></i> <span>{{ p.product_name }}</span>
+                    </div>
+                    {% else %}
+                    <div class="product-item" data-id="{{ p.id }}" onclick="loadWarrantyInfo({{ p.id }}, this)">
+                        <i class="fas fa-caret-right" style="color: var(--primary);"></i> <span class="prod-name">{{
+                            p.product_name }}</span>
+                    </div>
+                    {% endif %}
+                    {% endfor %}
+                </div>
+            </div>
+
+            <div class="card detail-view">
+                <h2><i class="fas fa-list-alt"></i> Chi tiết bảo hành</h2>
+
+                <div class="controls">
+                    <div class="search-box">
+                        <input type="text" id="searchInput" placeholder="Nhập mã đơn hoặc số phiếu..."
+                            onkeyup="handleSearch(event)">
+                        <button class="btn btn-primary" onclick="reloadCurrentProduct()"><i class="fas fa-search"></i>
+                            Tìm</button>
+
+                        <div class="limit-select">
+                            <label for="limitSelect">Hiển thị:</label>
+                            <select id="limitSelect" onchange="changeLimit()">
+                                <option value="12">12 mục</option>
+                                <option value="24">24 mục</option>
+                                <option value="100">100 mục</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="action-buttons">
+                        <button class="btn btn-secondary" onclick="printSelected()"><i class="fas fa-print"></i> In mục
+                            đã chọn</button>
+                        <button class="btn btn-success" onclick="exportToExcel('Danh_Sach_Bao_Hanh')"><i
+                                class="fas fa-file-excel"></i> Xuất Excel</button>
+                    </div>
+                </div>
+
+                <table id="warrantyTable">
+                    <thead>
+                        <tr>
+                            <th class="no-print" style="width: 5%; text-align: center;">
+                                <input type="checkbox" id="selectAll" onclick="toggleSelectAll()">
+                            </th>
+                            <th style="width: 20%;">Mã đơn</th>
+                            <th style="width: 15%;">Số phiếu</th>
+                            <th style="width: 25%;">Tên khách</th>
+                            <th style="width: 15%;">Ngày kích hoạt</th>
+                            <th style="width: 20%;">Trạng thái</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tableBody">
+                        <tr>
+                            <td colspan="6" style="text-align:center; color:#777;">Vui lòng chọn một sản phẩm bên trái
+                                để xem dữ liệu.</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <div class="pagination" id="paginationControls"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- JS Quản lý dữ liệu bảo hành ---
+        let currentProductId = null;
+        let currentPage = 1;
+        let searchTimeout = null;
+
+        function filterProducts() {
+            let filterValue = document.getElementById('leftSearchInput').value.toLowerCase();
+            let items = document.querySelectorAll('.product-item');
+
+            items.forEach(item => {
+                let text = item.innerText.toLowerCase();
+                if (text.includes(filterValue)) {
+                    item.style.display = 'flex';
+                } else {
+                    item.style.display = 'none';
+                }
+            });
+        }
+
+        function changeLimit() {
+            currentPage = 1;
+            fetchData();
+        }
+
+        function loadWarrantyInfo(productId, element) {
+            currentProductId = productId;
+            currentPage = 1;
+
+            document.querySelectorAll('.product-item').forEach(el => el.classList.remove('active'));
+            if (element) element.classList.add('active');
+
+            document.getElementById('searchInput').value = '';
+            document.getElementById('selectAll').checked = false;
+
+            fetchData();
+        }
+
+        function handleSearch(event) {
+            clearTimeout(searchTimeout);
+            if (event.key === 'Enter') {
+                reloadCurrentProduct();
+            } else {
+                searchTimeout = setTimeout(() => { reloadCurrentProduct(); }, 500);
+            }
+        }
+
+        function reloadCurrentProduct() {
+            if (!currentProductId) {
+                alert("Vui lòng chọn sản phẩm trước!");
+                return;
+            }
+            currentPage = 1;
+            fetchData();
+        }
+
+        function fetchData() {
+            if (!currentProductId) return;
+
+            const searchInput = document.getElementById('searchInput').value.trim();
+            const limitValue = document.getElementById('limitSelect').value;
+            const tbody = document.getElementById('tableBody');
+
+            document.getElementById('selectAll').checked = false;
+            tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;">Đang tải dữ liệu... <i class="fas fa-spinner fa-spin"></i></td></tr>';
+
+            const apiUrl = `/api/khach-hang-bao-hanh/${currentProductId}?page=${currentPage}&search=${encodeURIComponent(searchInput)}&limit=${limitValue}&per_page=${limitValue}`;
+
+            fetch(apiUrl)
+                .then(res => res.json())
+                .then(data => {
+                    tbody.innerHTML = '';
+                    if (!data.items || data.items.length === 0) {
+                        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:var(--danger);">Không tìm thấy dữ liệu!</td></tr>';
+                    } else {
+                        data.items.forEach(item => {
+                            let colorStatus = item.trang_thai === 'Chưa kích hoạt' ? 'var(--danger)' : 'var(--success)';
+
+                            tbody.innerHTML += `
+                                <tr>
+                                    <td class="no-print" style="text-align: center;">
+                                        <input type="checkbox" class="row-checkbox">
+                                    </td>
+                                    <td>${item.ma_don}</td>
+                                    <td>${item.so_phieu}</td>
+                                    <td>${item.ten_khach}</td>
+                                    <td>${item.ngay_kich_hoat}</td>
+                                    <td><span style="color: ${colorStatus}; font-weight: 600;">${item.trang_thai}</span></td>
+                                </tr>
+                            `;
+                        });
+                    }
+                    renderPagination(data.total_pages);
+                })
+                .catch(err => {
+                    console.error(err);
+                    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:var(--danger);">Lỗi kết nối máy chủ!</td></tr>';
+                });
+        }
+
+        function renderPagination(totalPages) {
+            const pagination = document.getElementById('paginationControls');
+            pagination.innerHTML = '';
+            if (totalPages <= 1) return;
+
+            for (let i = 1; i <= totalPages; i++) {
+                const btn = document.createElement('button');
+                btn.className = `page-btn ${i === currentPage ? 'active' : ''}`;
+                btn.innerText = i;
+                btn.onclick = () => {
+                    currentPage = i;
+                    fetchData();
+                };
+                pagination.appendChild(btn);
+            }
+        }
+
+        function exportToExcel(filename) {
+            if (!currentProductId) {
+                alert("Vui lòng chọn một sản phẩm trước khi xuất file!");
+                return;
+            }
+
+            let table = document.querySelector("table");
+            if (table.rows.length <= 1 || table.rows[1].cells.length === 1) {
+                alert("Không có dữ liệu để xuất!");
+                return;
+            }
+
+            let cloneTable = table.cloneNode(true);
+            let rows = cloneTable.rows;
+            for (let i = 0; i < rows.length; i++) {
+                rows[i].deleteCell(0);
+            }
+
+            let wb = XLSX.utils.table_to_book(cloneTable, { sheet: "Danh sách" });
+            XLSX.writeFile(wb, filename + ".xlsx");
+        }
+
+        function toggleSelectAll() {
+            let isChecked = document.getElementById('selectAll').checked;
+            let checkboxes = document.querySelectorAll('.row-checkbox');
+            checkboxes.forEach(cb => { cb.checked = isChecked; });
+        }
+
+        function printSelected() {
+            let selectedRows = [];
+            let rows = document.querySelectorAll('#warrantyTable tbody tr');
+
+            rows.forEach(row => {
+                let checkbox = row.querySelector('.row-checkbox');
+                if (checkbox && checkbox.checked) {
+                    selectedRows.push(row);
+                }
+            });
+
+            if (selectedRows.length === 0) {
+                alert("Vui lòng tick chọn ít nhất một mục để in!");
+                return;
+            }
+
+            let printContent = `
+                <html>
+                <head>
+                    <title>In Danh Sách Bảo Hành</title>
+                    <style>
+                        body { font-family: Arial, sans-serif; padding: 20px; }
+                        h2 { text-align: center; color: #333; }
+                        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+                        th, td { border: 1px solid #000; padding: 10px; text-align: left; }
+                        th { background-color: #f0f0f0; }
+                    </style>
+                </head>
+                <body>
+                    <h2>DANH SÁCH BẢO HÀNH ĐƯỢC CHỌN</h2>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Mã đơn (Shopee)</th>
+                                <th>Số phiếu</th>
+                                <th>Tên khách</th>
+                                <th>Ngày kích hoạt</th>
+                                <th>Trạng thái</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+            `;
+
+            selectedRows.forEach(row => {
+                let cells = row.querySelectorAll('td');
+                printContent += "<tr>";
+                for (let i = 1; i < cells.length; i++) {
+                    printContent += `<td>${cells[i].innerHTML}</td>`;
+                }
+                printContent += "</tr>";
+            });
+
+            printContent += `
+                        </tbody>
+                    </table>
+                    <script>
+                        window.onload = function() { 
+                            window.print(); 
+                            setTimeout(() => { window.close(); }, 500); 
+                        }
+                    <\/script>
+                </body>
+                </html>
+            `;
+
+            let printWindow = window.open('', '_blank', 'width=900,height=600');
+            printWindow.document.write(printContent);
+            printWindow.document.close();
+        }
+    </script>
+</body>
+
+</html>

@@ -7,6 +7,8 @@
     <title>Quản lý Sản Phẩm</title>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <link rel="icon" type="image/png" href="{{ url_for('static', filename='favicon.png') }}">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
     <style>
         :root {
             --primary: #4361ee;
@@ -42,15 +44,22 @@
         .btn-back {
             text-decoration: none;
             color: #64748b;
-            font-weight: 500;
+            font-weight: 600;
             display: flex;
             align-items: center;
             gap: 8px;
             transition: 0.2s;
+            background: white;
+            padding: 10px 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+            border: none;
+            cursor: pointer;
         }
 
         .btn-back:hover {
             color: var(--primary);
+            transform: translateX(-3px);
         }
 
         .card {
@@ -63,10 +72,14 @@
 
         .card-header {
             padding: 25px;
+            border-bottom: 1px solid #f1f5f9;
+        }
+
+        .card-header-top {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            border-bottom: 1px solid #f1f5f9;
+            margin-bottom: 15px;
         }
 
         .card-header h2 {
@@ -95,7 +108,7 @@
             text-transform: uppercase;
             letter-spacing: 0.05em;
             color: #64748b;
-            border-bottom: 1px solid #f1f5f9;
+            border-bottom: 2px solid #e2e8f0;
         }
 
         td {
@@ -122,27 +135,38 @@
             box-shadow: 0 4px 12px rgba(67, 97, 238, 0.15);
         }
 
-        /* Nút sửa đổi thành button để gọi JS */
-        .btn-edit {
-            color: var(--warning);
-            text-decoration: none;
-            margin-right: 15px;
-            font-weight: 500;
-            background: none;
+        .action-group {
+            display: flex;
+            justify-content: flex-end;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .btn-edit,
+        .btn-delete {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: transparent;
             border: none;
             cursor: pointer;
-            padding: 0;
+            font-weight: 500;
             font-size: 0.9rem;
+            padding: 5px;
+            transition: 0.2s opacity;
+        }
+
+        .btn-edit:hover,
+        .btn-delete:hover {
+            opacity: 0.7;
+        }
+
+        .btn-edit {
+            color: var(--warning);
         }
 
         .btn-delete {
             color: var(--danger);
-            border: none;
-            background: none;
-            cursor: pointer;
-            font-weight: 500;
-            padding: 0;
-            font-size: 0.9rem;
         }
 
         .simple-form {
@@ -161,7 +185,7 @@
             outline: none;
         }
 
-        /* --- CSS CHO MODAL --- */
+        /* Modal CSS */
         .modal-overlay {
             position: fixed;
             top: 0;
@@ -170,116 +194,88 @@
             height: 100%;
             background: rgba(0, 0, 0, 0.5);
             display: none;
-            /* Mặc định ẩn */
             justify-content: center;
             align-items: center;
             z-index: 1000;
-            backdrop-filter: blur(2px);
+            backdrop-filter: blur(3px);
         }
 
         .modal-overlay.active {
             display: flex;
-            animation: fadeIn 0.2s ease-out;
         }
 
         .modal-box {
             background: white;
-            width: 100%;
+            width: 90%;
             max-width: 500px;
-            border-radius: 12px;
-            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+            border-radius: 16px;
+            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.25);
             overflow: hidden;
-            transform: scale(0.95);
-            transition: transform 0.2s;
-        }
-
-        .modal-overlay.active .modal-box {
-            transform: scale(1);
         }
 
         .modal-header {
-            padding: 15px 20px;
+            padding: 20px 25px;
             background: #f8fafc;
-            border-bottom: 1px solid #eee;
+            border-bottom: 1px solid #e2e8f0;
             display: flex;
             justify-content: space-between;
             align-items: center;
         }
 
-        .modal-header h3 {
-            margin: 0;
-            font-size: 1.1rem;
-        }
-
-        .close-modal {
-            cursor: pointer;
-            color: #64748b;
-            font-size: 1.2rem;
-        }
-
         .modal-body {
-            padding: 20px;
+            padding: 25px;
         }
 
         .form-group {
-            margin-bottom: 15px;
-        }
-
-        .form-group label {
-            display: block;
-            margin-bottom: 5px;
-            font-weight: 500;
-            font-size: 0.9rem;
+            margin-bottom: 20px;
         }
 
         .form-control {
             width: 100%;
-            padding: 10px;
-            border: 1px solid #ddd;
-            border-radius: 6px;
+            padding: 12px;
+            border: 1px solid #cbd5e1;
+            border-radius: 8px;
             box-sizing: border-box;
-            font-size: 1rem;
-        }
-
-        .form-control:focus {
-            outline: none;
-            border-color: var(--primary);
         }
 
         .modal-footer {
-            padding: 15px 20px;
-            border-top: 1px solid #eee;
+            padding: 20px 25px;
+            border-top: 1px solid #e2e8f0;
             display: flex;
             justify-content: flex-end;
-            gap: 10px;
+            gap: 12px;
         }
 
         .btn-save {
             background: var(--primary);
             color: white;
             border: none;
-            padding: 8px 20px;
-            border-radius: 6px;
+            padding: 10px 24px;
+            border-radius: 8px;
             cursor: pointer;
+            font-weight: 600;
         }
 
         .btn-cancel {
-            background: #e2e8f0;
-            color: #333;
-            border: none;
-            padding: 8px 20px;
-            border-radius: 6px;
+            background: white;
+            color: #64748b;
+            border: 1px solid #cbd5e1;
+            padding: 10px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+        }
+
+        /* Checkbox style */
+        input[type="checkbox"] {
+            transform: scale(1.2);
             cursor: pointer;
         }
 
-        @keyframes fadeIn {
-            from {
-                opacity: 0;
-            }
-
-            to {
-                opacity: 1;
-            }
+        /* Search Input Focus */
+        #searchInput:focus {
+            border-color: var(--primary) !important;
+            box-shadow: 0 0 0 2px rgba(67, 97, 238, 0.1);
         }
     </style>
 </head>
@@ -292,48 +288,89 @@
 
         <div class="card">
             <div class="card-header">
-                <h2><i class="fas fa-cubes" style="color: var(--primary);"></i> Danh sách Sản Phẩm</h2>
+                <div class="card-header-top">
+                    <h2><i class="fas fa-cubes" style="color: var(--primary);"></i> Danh sách Sản Phẩm</h2>
+                    <button id="btnDeleteSelected" class="btn-back"
+                        style="display: none; background-color: var(--danger); color: white;">
+                        <i class="fas fa-trash-alt"></i> Xóa đã chọn (<span id="selectedCount">0</span>)
+                    </button>
+                </div>
+                <div
+                    style="background: #f8fafc; padding: 20px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; gap: 15px; align-items: center; flex-wrap: wrap;">
+
+                    <div style="display: flex; gap: 10px;">
+                        <form action="{{ url_for('import_products_excel') }}" method="POST"
+                            enctype="multipart/form-data" id="importForm">
+                            <input type="file" name="file" accept=".xlsx, .xls" id="fileInput" style="display: none;"
+                                onchange="document.getElementById('importForm').submit()">
+                            <button type="button" class="btn-back"
+                                style="background: #2980b9; color: white; border: none; padding: 8px 15px;"
+                                onclick="document.getElementById('fileInput').click()">
+                                <i class="fas fa-file-upload"></i>Import
+                            </button>
+                        </form>
+                        <a href="{{ url_for('export_products_excel') }}" class="btn-back"
+                            style="background: #27ae60; color: white; border: none; padding: 8px 15px;">
+                            <i class="fas fa-file-download"></i> Export
+                        </a>
+                    </div>
+
+                    <div class="search-box"
+                        style="display: flex; align-items: center; background: white; border: 1px solid #cbd5e1; border-radius: 8px; padding: 8px 15px; flex: 1; max-width: 350px; transition: 0.3s;">
+                        <i class="fas fa-search" style="color: #94a3b8; margin-right: 10px;"></i>
+                        <input type="text" id="searchInput" placeholder="Tìm theo Mã SP hoặc Tên SP..."
+                            style="border: none; outline: none; width: 100%; font-size: 0.9rem;"
+                            onkeyup="filterProducts()">
+                    </div>
+
+                </div>
+                <form action="{{ url_for('add_product') }}" method="POST" class="simple-form">
+                    <input type="text" name="product_name" placeholder="Nhập tên sản phẩm mới vào đây..." required>
+                    <button type="submit" class="btn-add"><i class="fas fa-plus"></i> Thêm Ngay</button>
+                </form>
             </div>
 
-            <form action="{{ url_for('add_product') }}" method="POST" class="simple-form">
-                <input type="text" name="product_name" placeholder="Nhập tên sản phẩm mới vào đây..." required>
-                <button type="submit" class="btn-add"><i class="fas fa-plus"></i> Thêm Ngay</button>
-            </form>
-
             <div class="table-wrapper">
-                <table>
+                <table id="productsTable">
                     <thead>
                         <tr>
+                            <th style="width: 40px;"><input type="checkbox" id="selectAll"></th>
                             <th width="10%">ID</th>
                             <th>Mã SP</th>
                             <th>Tên Sản Phẩm</th>
+                            <th>Nội Dung</th>
                             <th style="text-align: right;">Thao tác</th>
                         </tr>
                     </thead>
                     <tbody>
                         {% for p in products %}
-                        <tr>
+                        <tr class="product-row">
+                            <td><input type="checkbox" class="product-checkbox" value="{{ p.id }}"></td>
                             <td><span style="color: #94a3b8;">#{{ p.id }}</span></td>
-                            <td><code>{{ p.product_code }}</code></td>
-                            <td><strong>{{ p.product_name }}</strong></td>
-                            <td style="text-align: right;">
-                                <button type="button" class="btn-edit"
-                                    onclick="openEditModal('{{ p.id }}', '{{ p.product_name }}')">
-                                    <i class="fas fa-edit"></i> Sửa tên
-                                </button>
-
-                                <form action="{{ url_for('delete_product', p_id=p.id) }}" method="POST"
-                                    style="display:inline;">
-                                    <button type="submit" class="btn-delete"
-                                        onclick="return confirm('Xóa sản phẩm này?');">
-                                        <i class="fas fa-trash-alt"></i> Xóa
+                            <td class="product-code"><code>{{ p.product_code }}</code></td>
+                            <td class="product-name"><strong>{{ p.product_name }}</strong></td>
+                            <td>{{ p.info_warranty }}</td>
+                            <td>
+                                <div class="action-group">
+                                    <button type="button" class="btn-edit" data-id="{{ p.id }}"
+                                        data-code="{{ p.product_code }}" data-name="{{ p.product_name }}"
+                                        data-info="{{ p.info_warranty }}" onclick="openEditModal(this)">
+                                        <i class="fas fa-edit"></i> Sửa
                                     </button>
-                                </form>
+
+                                    <form action="{{ url_for('delete_product', p_id=p.id) }}" method="POST"
+                                        style="margin: 0;">
+                                        <button type="submit" class="btn-delete"
+                                            onclick="return confirm('Xóa sản phẩm này?');">
+                                            <i class="fas fa-trash-alt"></i> Xóa
+                                        </button>
+                                    </form>
+                                </div>
                             </td>
                         </tr>
                         {% else %}
-                        <tr>
-                            <td colspan="4" style="text-align: center; padding: 30px; color: #999;">Chưa có sản phẩm
+                        <tr id="emptyRow">
+                            <td colspan="6" style="text-align: center; padding: 30px; color: #999;">Chưa có sản phẩm
                                 nào.</td>
                         </tr>
                         {% endfor %}
@@ -346,19 +383,28 @@
     <div id="editProductModal" class="modal-overlay">
         <div class="modal-box">
             <div class="modal-header">
-                <h3>Cập nhật tên sản phẩm</h3>
-                <span class="close-modal" onclick="closeModal()"><i class="fas fa-times"></i></span>
+                <h3><i class="fas fa-edit"></i> Cập nhật sản phẩm</h3>
+                <span class="close-modal" onclick="closeModal()" style="cursor:pointer"><i
+                        class="fas fa-times"></i></span>
             </div>
 
             <form id="editForm" action="{{ url_for('edit_product', p_id=0) }}" method="POST">
                 <div class="modal-body">
                     <div class="form-group">
-                        <label>Mã sản phẩm (ID): <span id="displayId"
+                        <label>ID sản phẩm: <span id="displayId"
                                 style="font-weight:bold; color:var(--primary)"></span></label>
+                    </div>
+                    <div class="form-group">
+                        <label for="editCode">Mã sản phẩm (SKU)</label>
+                        <input type="text" id="editCode" name="product_code" class="form-control" required>
                     </div>
                     <div class="form-group">
                         <label for="editName">Tên sản phẩm mới</label>
                         <input type="text" id="editName" name="product_name" class="form-control" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="editInfo">Nội dung</label>
+                        <input type="text" id="editInfo" name="info_warranty" class="form-control">
                     </div>
                 </div>
                 <div class="modal-footer">
@@ -368,46 +414,154 @@
             </form>
         </div>
     </div>
-    <footer style="text-align: center;margin-top: 20px;"> &copy;{{ now.year }}, Design by minhtruzz.dev@gmail.com
+
+    <footer style="text-align: center;margin-top: 20px;"> &copy;{{ now.year if now else '2024' }}, Design by
+        minhtruzz.dev@gmail.com
     </footer>
+
     <script>
         const modal = document.getElementById('editProductModal');
         const editForm = document.getElementById('editForm');
+        const editCodeInput = document.getElementById('editCode'); // ĐÃ THÊM
         const editNameInput = document.getElementById('editName');
+        const editInfoInput = document.getElementById('editInfo');
         const displayIdSpan = document.getElementById('displayId');
-
-        // Lưu lại base action URL (ví dụ: /edit-product/0)
         const baseAction = "{{ url_for('edit_product', p_id=0) }}";
 
-        function openEditModal(id, currentName) {
-            // 1. Điền thông tin cũ vào form
+        function openEditModal(buttonElement) {
+            const id = buttonElement.getAttribute('data-id');
+            const currentCode = buttonElement.getAttribute('data-code'); // ĐÃ THÊM
+            const currentName = buttonElement.getAttribute('data-name');
+            const currentInfo = buttonElement.getAttribute('data-info');
+
+            editCodeInput.value = currentCode || ''; // ĐÃ THÊM
             editNameInput.value = currentName;
+            editInfoInput.value = currentInfo || '';
             displayIdSpan.innerText = '#' + id;
-
-            // 2. Cập nhật action của form để trỏ đúng ID
-            // Thay số 0 ở cuối đường dẫn bằng ID thật
-            // Cách replace này an toàn miễn là url_for tạo ra link kết thúc bằng số 0
             editForm.action = baseAction.replace('0', id);
-
-            // 3. Hiện modal
             modal.classList.add('active');
-
-            // Focus vào ô nhập liệu
-            setTimeout(() => editNameInput.focus(), 100);
+            setTimeout(() => editCodeInput.focus(), 100);
         }
 
         function closeModal() {
             modal.classList.remove('active');
         }
 
-        // Đóng modal khi click ra ngoài
-        modal.addEventListener('click', function (e) {
-            if (e.target === modal) {
-                closeModal();
+        window.onclick = e => {
+            if (e.target == modal) closeModal();
+        }
+
+        // --- HÀM TÌM KIẾM SẢN PHẨM BẰNG JAVASCRIPT ---
+        function filterProducts() {
+            const searchInput = document.getElementById('searchInput').value.toLowerCase();
+            const rows = document.querySelectorAll('.product-row');
+
+            rows.forEach(row => {
+                const codeText = row.querySelector('.product-code').textContent.toLowerCase();
+                const nameText = row.querySelector('.product-name').textContent.toLowerCase();
+
+                // Hiển thị dòng nếu tìm thấy chuỗi trong Mã SP hoặc Tên SP
+                if (codeText.includes(searchInput) || nameText.includes(searchInput)) {
+                    row.style.display = '';
+                } else {
+                    row.style.display = 'none';
+                }
+            });
+        }
+
+        // --- BỔ SUNG LOGIC CHỌN NHIỀU & XÓA NHIỀU ---
+        const selectAllHeader = document.getElementById('selectAll');
+        const checkboxes = document.getElementsByClassName('product-checkbox');
+        const btnDeleteSelected = document.getElementById('btnDeleteSelected');
+        const selectedCountText = document.getElementById('selectedCount');
+
+        function updateDeleteButton() {
+            const checkedBoxes = document.querySelectorAll('.product-checkbox:checked');
+            const count = checkedBoxes.length;
+            if (count > 0) {
+                btnDeleteSelected.style.display = 'flex';
+                selectedCountText.innerText = count;
+            } else {
+                btnDeleteSelected.style.display = 'none';
+            }
+        }
+
+        selectAllHeader.addEventListener('change', function () {
+            // Chỉ check những dòng đang hiển thị (phục vụ cho chức năng search)
+            const visibleRows = document.querySelectorAll('.product-row:not([style*="display: none"]) .product-checkbox');
+            for (let cb of visibleRows) { cb.checked = this.checked; }
+            updateDeleteButton();
+        });
+
+        document.addEventListener('change', function (e) {
+            if (e.target.classList.contains('product-checkbox')) {
+                updateDeleteButton();
+                const visibleCheckboxes = document.querySelectorAll('.product-row:not([style*="display: none"]) .product-checkbox');
+                if (!e.target.checked) selectAllHeader.checked = false;
+                else if (document.querySelectorAll('.product-row:not([style*="display: none"]) .product-checkbox:checked').length === visibleCheckboxes.length) selectAllHeader.checked = true;
+            }
+        });
+
+        btnDeleteSelected.addEventListener('click', function () {
+            const checkedBoxes = document.querySelectorAll('.product-checkbox:checked');
+            const idsToDelete = Array.from(checkedBoxes).map(cb => cb.value);
+
+            Swal.fire({
+                title: `Xóa ${idsToDelete.length} sản phẩm?`,
+                text: "Dữ liệu sẽ bị xóa vĩnh viễn!",
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#ef476f',
+                confirmButtonText: 'Xóa ngay',
+                cancelButtonText: 'Hủy'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    fetch('/api/delete-multiple-products', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ ids: idsToDelete })
+                    })
+                        .then(res => res.json())
+                        .then(data => {
+                            if (data.success) {
+                                Swal.fire('Thành công!', 'Đã xóa các sản phẩm.', 'success').then(() => location.reload());
+                            } else {
+                                Swal.fire('Lỗi', data.message || 'Không thể xóa', 'error');
+                            }
+                        })
+                        .catch(err => {
+                            Swal.fire('Lỗi', 'Đã xảy ra lỗi kết nối!', 'error');
+                        });
+                }
+            });
+        });
+
+        document.addEventListener("DOMContentLoaded", function () {
+            const flashDiv = document.getElementById("flask-messages");
+
+            if (flashDiv) {
+                const messages = JSON.parse(flashDiv.getAttribute("data-messages"));
+
+                if (messages && messages.length > 0) {
+                    const lastMsg = messages[messages.length - 1];
+                    const category = lastMsg[0];
+                    const messageText = lastMsg[1];
+
+                    let iconType = 'warning';
+                    if (category === 'success') iconType = 'success';
+                    else if (category === 'danger' || category === 'error') iconType = 'error';
+
+                    Swal.fire({
+                        icon: iconType,
+                        title: 'Thông báo',
+                        text: messageText,
+                        confirmButtonColor: 'var(--primary)'
+                    });
+                }
             }
         });
     </script>
-</body>
 
+</body>
 
 </html>

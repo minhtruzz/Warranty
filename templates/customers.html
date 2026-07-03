@@ -161,7 +161,7 @@
             display: block;
         }
 
-        /* Buttons */
+
         .btn-add {
             background: var(--primary);
             color: white;
@@ -468,6 +468,7 @@
                         <select id="editRole" name="role" class="form-control">
                             <option value="user">User (Nhân viên)</option>
                             <option value="admin">Admin (Quản trị)</option>
+
                         </select>
                     </div>
                 </div>
@@ -481,33 +482,29 @@
     <footer style="text-align:center;margin-top: 10px;"> &copy;{{ now.year }}, Design by minhtruzz.dev@gmail.com
     </footer>
     <script>
-        // Hàm mở modal Thêm
+
         function openAddModal() {
             document.getElementById('addUserModal').classList.add('active');
         }
 
-        // Hàm mở modal Sửa và điền dữ liệu cũ
+
         function openEditModal(id, username, role) {
-            // 1. Điền thông tin cũ
+
             document.getElementById('displayUserId').innerText = '#' + id;
             document.getElementById('editUsername').value = username;
             document.getElementById('editRole').value = role;
 
-            // 2. Cập nhật action cho form (URL động)
-            // Lưu ý: Base URL phải khớp với route trong Flask
             let actionUrl = "{{ url_for('edit_user', user_id=0) }}".replace('0', id);
             document.getElementById('editUserForm').action = actionUrl;
 
-            // 3. Hiện modal
             document.getElementById('editUserModal').classList.add('active');
         }
 
-        // Hàm đóng modal
         function closeModal(modalId) {
             document.getElementById(modalId).classList.remove('active');
         }
 
-        // Đóng khi click ra ngoài popup
+
         window.onclick = function (event) {
             if (event.target.classList.contains('modal-overlay')) {
                 event.target.classList.remove('active');

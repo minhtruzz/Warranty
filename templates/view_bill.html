@@ -7,7 +7,6 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="icon" type="image/png" href="{{ url_for('static', filename='favicon.png') }}">
     <style>
-        /* GIỮ NGUYÊN TOÀN BỘ CSS CỦA BẠN */
         body {
             font-family: 'Segoe UI', Arial, sans-serif;
             background: #f5f6fa;
@@ -378,7 +377,6 @@
             cursor: pointer;
         }
 
-        /* TOOLBAR TÌM KIẾM VÀ LỌC (Thêm mới) */
         .toolbar {
             display: flex;
             justify-content: space-between;
@@ -450,7 +448,7 @@
                 style="background: linear-gradient(135deg, #2ecc71 0%, #27ae60 100%);" onclick="printSelectedItems()">
                 <i class="fas fa-print"></i> In mục đã chọn
             </button>
-            {% if current_user.role == 'admin' %}
+            {% if current_user.role | trim | lower == 'admin' %}
             <button id="btnDeleteAll" class="btn-delete-all" onclick="bulkDeleteItems()">
                 <i class="fas fa-trash-alt"></i> Xóa mục đã chọn (<span id="selectedCount">0</span>)
             </button>
@@ -467,17 +465,6 @@
                     <input type="text" id="localSearch" placeholder="Tìm mã bill hoặc sản phẩm..."
                         onkeyup="filterTable()">
                 </div>
-
-                <!-- <div
-                    style="display: flex; border: 1px solid #ddd; border-radius: 6px; overflow: hidden; background: #fff;">
-                    <input type="text" id="globalSearchInput" placeholder="Tìm đơn hàng khác..."
-                        style="padding: 8px; border: none; outline: none; width: 180px;"
-                        onkeypress="if(event.key === 'Enter') executeGlobalSearch()">
-                    <button onclick="executeGlobalSearch()"
-                        style="padding: 8px 12px; background: #95a5a6; color: white; border: none; cursor: pointer;">
-                        <i class="fas fa-external-link-alt"></i>
-                    </button>
-                </div> -->
             </div>
 
             <button id="inactiveBtn" class="btn-filter-inactive" onclick="toggleInactiveFilter()">
@@ -496,10 +483,11 @@
                     <th>Mã đơn hàng</th>
                     <th>Số phiếu</th>
                     <th>Sản phẩm</th>
+                    <th>Người tạo</th>
                     <th>Ngày kích hoạt</th>
                     <th>Xem Bảo Hành</th>
                     <th>In Bill</th>
-                    {% if current_user.role == 'admin' %}
+                    {% if current_user.role | trim | lower == 'admin' %}
                     <th>Xóa</th>
                     {% endif %}
                 </tr>
@@ -525,7 +513,7 @@
                             <span
                                 class="btn-save-{{ item.ma_bill }} btn-action {% if item.so_phieu %} hidden-element {% endif %}"
                                 onclick="handleSave('{{ item.ma_bill }}')" style="color: #2ecc71;">✔</span>
-                            {% if current_user.role == 'admin' %}
+                            {% if current_user.role | trim | lower == 'admin' %}
                             <span
                                 class="btn-edit-{{ item.ma_bill }} btn-action {% if not item.so_phieu %} hidden-element {% endif %}"
                                 onclick="handleEdit('{{ item.ma_bill }}')" style="color: #f1c40f;">✏️</span>
@@ -533,6 +521,7 @@
                         </div>
                     </td>
                     <td class="cell-name" style="text-align: left;">{{ item.product_name }}</td>
+                    <td>{{ item.created_by or 'Admin' }}</td>
                     <td>
                         {% if item.activated_at %}
                         {{ item.activated_at.strftime('%d/%m/%Y') }}
@@ -547,14 +536,14 @@
                         {% if w_count > 0 %}
                         {% set history = item.claim_history.split(',') if item.claim_history else [] %}
                         {% set last_date = history[-1].strip() if history else '...' %}
-                        <a href="/warranty/{{ item.uuid }}" target="_blank"
+                        <a href="/warranty/{{ item.uuid }}"
                             style="text-decoration: none; color: #e67e22; font-weight: bold; font-size: 13px; display: block; line-height: 1.2;">
                             ĐÃ BH LẦN {{ w_count }} <br>
                             <small style="color: #7f8c8d; font-weight: normal; font-size: 11px;">NGÀY {{ last_date
                                 }}</small>
                         </a>
                         {% else %}
-                        <a href="/warranty/{{ item.uuid }}" target="_blank"
+                        <a href="/warranty/{{ item.uuid }}"
                             style="text-decoration: none; color: #3498db; font-weight: bold;">Xem</a>
                         {% endif %}
                         {% endif %}
@@ -562,8 +551,7 @@
 
                     <td>
                         {% if item.so_phieu %}
-                        <a href="/single_qr/{{ item.uuid }}" target="_blank" class="btn-print-row"><i
-                                class="fas fa-print"></i> In</a>
+                        <a href="/single_qr/{{ item.uuid }}" class="btn-print-row"><i class="fas fa-print"></i> In</a>
                         {% else %}
                         <button type="button" class="btn-print-row"
                             style="background-color: #95a5a6; border: none; cursor: not-allowed;"
@@ -571,7 +559,7 @@
                                 class="fas fa-print"></i> In</button>
                         {% endif %}
                     </td>
-                    {% if current_user.role == 'admin' %}
+                    {% if current_user.role | trim | lower == 'admin' %}
                     <td><button class="btn-delete-detail"
                             onclick="deleteDetailItem('{{ item.uuid }}', '{{ item.product_name }}')">🗑️</button></td>
                     {% endif %}
@@ -615,7 +603,7 @@
     </div>
 
     <script>
-        // === LOGIC LỌC VÀ TÌM KIẾM MỚI ===
+
         let showOnlyInactive = false;
 
         function filterTable() {
@@ -660,7 +648,6 @@
             }
         }
 
-        // === CÁC HÀM CŨ CỦA BẠN (GIỮ NGUYÊN 100%) ===
         const selectAllCheckbox = document.getElementById('selectAll');
         const itemCheckboxes = document.querySelectorAll('.item-checkbox');
         const btnDeleteAll = document.getElementById('btnDeleteAll');
@@ -668,13 +655,31 @@
 
         if (selectAllCheckbox) {
             selectAllCheckbox.addEventListener('change', function () {
-                itemCheckboxes.forEach(cb => cb.checked = this.checked);
+                itemCheckboxes.forEach(cb => {
+                    const row = cb.closest('tr');
+                    // Chỉ thao tác trên những dòng đang hiển thị (không bị ẩn)
+                    if (row && row.style.display !== 'none') {
+                        cb.checked = this.checked;
+                    } else {
+                        cb.checked = false; // Mặc định bỏ chọn các dòng đang ẩn
+                    }
+                });
                 updateSelectedCount();
             });
         }
 
         function updateSelectedCount() {
-            const checkedCount = document.querySelectorAll('.item-checkbox:checked').length;
+            let checkedCount = 0;
+            const checkedBoxes = document.querySelectorAll('.item-checkbox:checked');
+
+            // Chỉ đếm những checkbox thuộc dòng đang hiển thị
+            checkedBoxes.forEach(cb => {
+                const row = cb.closest('tr');
+                if (row && row.style.display !== 'none') {
+                    checkedCount++;
+                }
+            });
+
             if (selectedCountSpan) selectedCountSpan.innerText = checkedCount;
             if (btnDeleteAll) {
                 if (checkedCount > 0) btnDeleteAll.classList.add('show');
@@ -736,7 +741,41 @@
             const val = document.querySelector('.sync-' + maBill).value.trim().toUpperCase();
             if (!val) { Swal.fire('Lỗi', 'Nhập số phiếu!', 'warning'); return; }
             fetch('/update-so-phieu', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ items: [{ ma_bill: maBill, so_phieu: val }] }) })
-                .then(res => res.json()).then(data => { if (data.success) location.reload(); });
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) {
+                        Swal.fire('Thành công', data.message || 'Đã lưu số phiếu thành công!', 'success').then(() => {
+                            location.reload();
+                        });
+                    } else {
+                        Swal.fire('Lỗi', data.message || 'Có lỗi xảy ra hoặc trùng số phiếu!', 'error');
+                    }
+                })
+                .catch(err => Swal.fire('Lỗi', 'Không thể kết nối đến máy chủ!', 'error'));
+        }
+
+        function saveBulkData() {
+            const inputs = document.querySelectorAll('.js-bulk-input');
+            const items = [];
+            inputs.forEach(input => { if (input.value.trim()) items.push({ ma_bill: input.getAttribute('data-ma-bill'), so_phieu: input.value.trim().toUpperCase() }); });
+
+            if (items.length === 0) {
+                Swal.fire('Thông báo', 'Bạn chưa nhập số phiếu nào!', 'info');
+                return;
+            }
+
+            fetch('/update-so-phieu', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ items: items }) })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) {
+                        Swal.fire('Thành công', data.message || 'Đã lưu tất cả số phiếu!', 'success').then(() => {
+                            location.reload();
+                        });
+                    } else {
+                        Swal.fire('Lỗi', data.message || 'Có lỗi xảy ra hoặc trùng số phiếu!', 'error');
+                    }
+                })
+                .catch(err => Swal.fire('Lỗi', 'Không thể kết nối đến máy chủ!', 'error'));
         }
 
         function handleEdit(maBill) {
@@ -749,14 +788,6 @@
             Swal.fire({ title: 'Xóa?', text: name, icon: 'warning', showCancelButton: true }).then((result) => {
                 if (result.isConfirmed) fetch('/delete-warranty-item/' + uuid, { method: 'POST' }).then(res => res.json()).then(data => { if (data.success) location.reload(); });
             });
-        }
-
-        function saveBulkData() {
-            const inputs = document.querySelectorAll('.js-bulk-input');
-            const items = [];
-            inputs.forEach(input => { if (input.value.trim()) items.push({ ma_bill: input.getAttribute('data-ma-bill'), so_phieu: input.value.trim().toUpperCase() }); });
-            fetch('/update-so-phieu', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ items: items }) })
-                .then(res => res.json()).then(data => { if (data.success) location.reload(); });
         }
     </script>
 </body>
